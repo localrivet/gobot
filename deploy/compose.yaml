@@ -1,0 +1,95 @@
+# Production Docker Compose with DOSync and DataSaver
+# Usage: docker compose up -d
+# DOSync will auto-deploy when new images are pushed to GHCR
+# DataSaver handles automated database backups
+
+services:
+  # Gobot Application (DOSync will update this tag automatically)
+  app:
+    image: ghcr.io/${GITHUB_REPOSITORY}:${IMAGE_TAG}
+    container_name: gobot_app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - PRODUCTION_MODE=true
+      - APP_DOMAIN=${APP_DOMAIN}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - ACCESS_SECRET=${ACCESS_SECRET}
+      - SQLITE_PATH=/app/data/gobot.db
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - LEVEE_ENABLED=${LEVEE_ENABLED:-false}
+      - LEVEE_API_KEY=${LEVEE_API_KEY}
+      - LEVEE_BASE_URL=${LEVEE_BASE_URL}
+    volumes:
+      - app_data:/app/data
+      - ./certs:/app/certs
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+  # DataSaver for automated SQLite backups
+  datasaver:
+    image: ghcr.io/localrivet/datasaver:latest
+    container_name: datasaver
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      # Database
+      - DATASAVER_DB_TYPE=sqlite
+      - DATASAVER_DB_PATH=/data/gobot.db
+      # Schedule (daily at 2 AM UTC)
+      - DATASAVER_SCHEDULE=0 2 * * *
+      # Storage
+      - DATASAVER_STORAGE_BACKEND=local
+      - DATASAVER_STORAGE_PATH=/backups
+      - DATASAVER_COMPRESSION=gzip
+      # Retention (GFS: 7 daily, 4 weekly, 3 monthly)
+      - DATASAVER_KEEP_DAILY=7
+      - DATASAVER_KEEP_WEEKLY=4
+      - DATASAVER_KEEP_MONTHLY=3
+      # Monitoring
+      - DATASAVER_HEALTH_PORT=8080
+    volumes:
+      - app_data:/data:ro
+      - db_backups:/backups
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8080/health"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+
+  # DOSync for zero-downtime deployments
+  dosync:
+    image: localrivet/dosync:v0.3.4
+    container_name: dosync
+    restart: unless-stopped
+    depends_on:
+      - app
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./compose.yaml:/app/compose.yaml
+      - ./dosync.yaml:/app/dosync.yaml:ro
+      - ./backups:/app/backups
+      - /root/.docker/config.json:/root/.docker/config.json:ro
+    environment:
+      - GITHUB_PAT=${GITHUB_PAT}
+      - CHECK_INTERVAL=2m
+      - VERBOSE=true
+      - SYNC_INTERVAL=2m
+      - SYNC_ROLLING_UPDATE=false
+      - SYNC_STRATEGY=recreate
+      - SYNC_HEALTH_CHECK=docker
+      - SYNC_DELAY=30s
+      - SYNC_ROLLBACK_ON_FAILURE=false
+
+volumes:
+  app_data:
+  db_backups:

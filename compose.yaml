@@ -1,0 +1,42 @@
+# Development Docker Compose
+# Usage: docker compose up
+# For production, see deploy/compose.yaml
+
+services:
+  # Go app with hot reload
+  app:
+    build:
+      context: .
+      target: development
+    container_name: gobot_app
+    ports:
+      - "27895:8888"
+    env_file:
+      - .env
+    environment:
+      - TZ=UTC
+      - PRODUCTION_MODE=false
+      - SQLITE_PATH=/app/data/gobot.db
+      - ACCESS_SECRET=${ACCESS_SECRET:-dev-secret-change-in-production}
+      - APP_BASE_URL=http://localhost:27458
+      - LEVEE_ENABLED=${LEVEE_ENABLED:-false}
+      - LEVEE_API_KEY=${LEVEE_API_KEY}
+      - LEVEE_BASE_URL=${LEVEE_BASE_URL}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+    volumes:
+      - .:/app
+      - /app/tmp
+      - go-mod-cache:/go/pkg/mod
+      - ./data:/app/data
+    restart: unless-stopped
+    command: air
+
+volumes:
+  go-mod-cache:
+    driver: local
+
+networks:
+  default:
+    name: gobot_network

@@ -1,0 +1,44 @@
+package db
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"gobot/internal/db/migrations"
+
+	_ "modernc.org/sqlite" // Pure Go SQLite driver (no CGO)
+
+	"github.com/zeromicro/go-zero/core/logx"
+)
+
+// NewSQLite creates a new SQLite database connection, runs migrations, and returns a Store
+func NewSQLite(path string) (*Store, error) {
+	// Ensure directory exists
+	dir := filepath.Dir(path)
+	if dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create database directory: %w", err)
+		}
+	}
+
+	// Open database with WAL mode for better concurrency
+	db, err := sql.Open("sqlite", path+"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=synchronous(NORMAL)&_pragma=cache_size(1000000000)&_pragma=foreign_keys(1)")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+
+	// Test connection
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	// Run goose migrations
+	if err := migrations.Run(db); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	logx.Infof("SQLite database initialized at %s", path)
+	return NewStore(db), nil
+}

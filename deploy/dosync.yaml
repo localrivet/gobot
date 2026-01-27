@@ -1,0 +1,57 @@
+# DOSync Configuration for gobot
+# Manages zero-downtime deployments with automatic rollback
+
+registry:
+  ghcr:
+    token: ${GITHUB_PAT}
+    username: ${GITHUB_USERNAME}
+    image_policy:
+      filterTags:
+        pattern: '^main-(?P<ts>\d+)-[a-f0-9]+$' # Match: main-timestamp-commit
+        extract: "ts" # Extract timestamp for sorting
+      policy:
+        numerical:
+          order: desc # Latest timestamp (newest)
+
+# Service-specific settings
+services:
+  app:
+    skip: false # Allow auto-updates
+  dosync:
+    skip: true # Never auto-update dosync itself
+  datasaver:
+    skip: true # Never auto-update datasaver
+
+# Notifications (optional - configure as needed)
+notifications:
+  slack:
+    enabled: false
+    # webhook: ${SLACK_WEBHOOK_URL}
+
+  email:
+    enabled: false
+    # smtp_host: smtp.gmail.com
+    # smtp_port: 587
+    # from: dosync@your-domain.com
+    # to: admin@your-domain.com
+    # username: ${EMAIL_USERNAME}
+    # password: ${EMAIL_PASSWORD}
+
+# Metrics and monitoring
+metrics:
+  enabled: true
+  retention: 30d # Keep deployment history for 30 days
+
+# Global settings
+settings:
+  # Check for new images every 2 minutes
+  checkInterval: 2m
+
+  # Verbose logging for troubleshooting
+  verbose: true
+
+  # Backup retention
+  backupRetention: 7d
+
+  # Maximum concurrent deployments
+  maxConcurrent: 1

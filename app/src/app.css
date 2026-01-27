@@ -1,0 +1,385 @@
+/**
+ * Gobot Design System
+ * Single source of truth - Tailwind CSS v4 + DaisyUI
+ */
+
+/* Fonts */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@700,900&display=swap');
+
+/* Tailwind */
+@import 'tailwindcss';
+@plugin "@tailwindcss/typography";
+@plugin "daisyui" {
+	themes: dark --default;
+}
+
+/* ===== Theme Tokens ===== */
+@theme {
+	/* Fonts */
+	--font-display: 'Satoshi', system-ui, sans-serif;
+	--font-body: 'DM Sans', system-ui, sans-serif;
+
+	/* Base palette - for gradient backgrounds */
+	--color-base-900: #0a0f1a;
+	--color-base-800: #111827;
+	--color-base-700: #1e293b;
+	--color-base-600: #334155;
+
+	/* Accent colors */
+	--color-primary: #ffbe18;
+	--color-primary-light: #ffd04d;
+	--color-secondary: #3b82f6;
+	--color-tertiary: #8b5cf6;
+
+	/* Shadows */
+	--shadow-glow: 0 0 40px color-mix(in srgb, var(--color-primary) 30%, transparent);
+	--shadow-card:
+		0 0 0 1px color-mix(in srgb, black 3%, transparent),
+		0 2px 4px color-mix(in srgb, black 5%, transparent),
+		0 12px 24px color-mix(in srgb, black 5%, transparent);
+	--shadow-button: 0 4px 14px color-mix(in srgb, var(--color-primary) 40%, transparent);
+	--shadow-dropdown: 0 10px 40px color-mix(in srgb, black 40%, transparent);
+}
+
+/* ===== Base Styles ===== */
+@layer base {
+	*,
+	*::before,
+	*::after {
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		text-rendering: optimizeLegibility;
+	}
+
+	html {
+		font-smooth: always;
+	}
+
+	body {
+		font-family: var(--font-body);
+		@apply bg-base-100 text-base-content;
+	}
+}
+
+/* ===== Keyframes ===== */
+@keyframes fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes slide-up {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes dropdown-fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
+
+/* ===== Utilities ===== */
+@layer utilities {
+	.font-display {
+		font-family: var(--font-display);
+	}
+
+	.text-gradient {
+		@apply text-secondary;
+	}
+
+	.animate-fade-in {
+		animation: fade-in 0.5s ease forwards;
+	}
+
+	.animate-slide-up {
+		animation: slide-up 0.6s ease forwards;
+	}
+
+	/* Staggered animation delays */
+	.stagger-delay {
+		animation-delay: calc(var(--delay, 0) * 100ms);
+	}
+
+	.stagger-delay-150 {
+		animation-delay: calc(var(--delay, 0) * 150ms);
+	}
+
+	.stagger-delay-80 {
+		animation-delay: calc(var(--delay, 0) * 80ms);
+	}
+
+	/* Theme color utilities */
+	.themed-color {
+		color: var(--theme-color);
+	}
+
+	.themed-bg {
+		background: color-mix(in srgb, var(--theme-color) 20%, transparent);
+	}
+
+	/* Dynamic size utilities */
+	.dynamic-width {
+		width: var(--width, 0%);
+	}
+
+	.dynamic-height {
+		height: var(--height, 0px);
+	}
+
+	.collapsible-container {
+		overflow: hidden;
+		transition: height 300ms cubic-bezier(0.4, 0, 0.2, 1);
+	}
+}
+
+/* ===== Components ===== */
+@layer components {
+	/* ===== Layouts ===== */
+	.layout-www {
+		@apply min-h-dvh relative overflow-x-hidden;
+		background: linear-gradient(to bottom, var(--color-base-900), var(--color-base-800));
+	}
+
+	.layout-www::before {
+		content: '';
+		@apply fixed inset-0 pointer-events-none;
+		background:
+			radial-gradient(
+				ellipse at 20% 0%,
+				color-mix(in srgb, var(--color-primary) 15%, transparent) 0%,
+				transparent 50%
+			),
+			radial-gradient(
+				ellipse at 80% 100%,
+				color-mix(in srgb, var(--color-secondary) 10%, transparent) 0%,
+				transparent 50%
+			);
+		z-index: 0;
+	}
+
+	.layout-auth {
+		@apply min-h-dvh flex items-center justify-center p-4 relative overflow-hidden;
+		background: var(--color-base-900);
+	}
+
+	.layout-auth::before {
+		content: '';
+		@apply absolute rounded-full pointer-events-none;
+		width: 800px;
+		height: 800px;
+		background: radial-gradient(
+			circle,
+			color-mix(in srgb, var(--color-primary) 20%, transparent) 0%,
+			transparent 70%
+		);
+		top: -400px;
+		right: -200px;
+	}
+
+	.layout-auth::after {
+		content: '';
+		@apply absolute rounded-full pointer-events-none;
+		width: 600px;
+		height: 600px;
+		background: radial-gradient(
+			circle,
+			color-mix(in srgb, var(--color-secondary) 15%, transparent) 0%,
+			transparent 70%
+		);
+		bottom: -300px;
+		left: -200px;
+	}
+
+	.layout-app {
+		@apply min-h-dvh flex flex-col;
+		background: var(--color-base-900);
+	}
+
+	.layout-app-header {
+		@apply sticky top-0 z-50 px-6 py-3 border-b;
+		border-color: var(--color-base-700);
+		background: color-mix(in srgb, var(--color-base-900) 95%, transparent);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+	}
+
+	/* ===== Form Helpers ===== */
+	.form-label {
+		@apply block text-sm font-medium mb-1 text-base-content;
+	}
+
+	.input,
+	.textarea,
+	.select {
+		outline: none !important;
+	}
+
+	.form-hint {
+		@apply text-xs mt-1 text-base-content/50;
+	}
+
+	.form-error {
+		@apply text-xs mt-1 text-error;
+	}
+
+	/* ===== Navigation ===== */
+	.nav-link {
+		@apply flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all duration-150 text-sm text-base-content/60;
+	}
+
+	.nav-link:hover {
+		@apply text-base-content bg-base-200;
+	}
+
+	.nav-link.active {
+		@apply text-primary bg-primary/10;
+	}
+
+	/* ===== Skip Link ===== */
+	.skip-link {
+		@apply absolute left-1/2 -translate-x-1/2 px-4 py-2 font-semibold rounded-lg z-[9999] transition-all duration-150 bg-primary text-primary-content;
+		top: -100%;
+	}
+
+	.skip-link:focus {
+		top: 0.5rem;
+	}
+
+	/* ===== Dropdown ===== */
+	.dropdown-menu {
+		@apply absolute z-50 min-w-40 overflow-hidden rounded-lg bg-base-100 p-1 border border-base-300 shadow-lg;
+		margin-top: 0.25rem;
+		animation: dropdown-fade-in 0.15s ease-out;
+	}
+
+	.dropdown-menu-end {
+		@apply right-0;
+	}
+
+	.dropdown-menu-start {
+		@apply left-0;
+	}
+
+	.dropdown-separator {
+		@apply h-px my-1 bg-base-300;
+	}
+
+	.dropdown-item {
+		@apply relative flex w-full cursor-pointer select-none items-center rounded-md px-3 py-2 text-sm text-base-content bg-transparent border-none outline-none transition-colors duration-150;
+	}
+
+	.dropdown-item:hover,
+	.dropdown-item:focus {
+		@apply bg-base-200;
+	}
+
+	.dropdown-item:disabled {
+		@apply pointer-events-none opacity-50;
+	}
+
+	/* ===== Spinner ===== */
+	.spinner {
+		@apply w-6 h-6 rounded-full border-2 border-base-300;
+		border-top-color: var(--color-primary);
+		animation: spin 0.8s linear infinite;
+	}
+
+	.spinner-small {
+		@apply w-4 h-4 rounded-full border-2 border-base-content/30;
+		border-top-color: var(--color-primary);
+		animation: spin 0.8s linear infinite;
+	}
+
+	/* ===== Chip ===== */
+	.chip {
+		@apply inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-full cursor-pointer transition-all duration-200 bg-base-200 text-base-content border border-base-300;
+	}
+
+	.chip:hover {
+		@apply bg-base-300 text-base-content;
+	}
+
+	.chip.active {
+		@apply text-primary border-primary bg-primary/10;
+	}
+
+	/* ===== Card Helpers ===== */
+	.card-header {
+		@apply mb-4;
+	}
+
+	.card-subtitle {
+		@apply text-sm text-base-content/60 mt-1;
+	}
+
+	/* ===== Prose/Content ===== */
+	.prose-custom {
+		@apply prose prose-lg prose-invert max-w-none;
+	}
+
+	.prose-custom :where(h1, h2, h3, h4) {
+		font-family: var(--font-display);
+	}
+
+	.prose-custom :where(a) {
+		color: var(--color-primary);
+	}
+
+	.prose-custom :where(blockquote) {
+		border-left-color: var(--color-primary);
+	}
+
+	.prose-custom :where(code):not(:where(pre *)) {
+		@apply px-1.5 py-0.5 rounded bg-base-200;
+	}
+
+	.prose-custom :where(pre) {
+		@apply rounded-xl bg-base-200 border border-base-300;
+	}
+}
+
+/* ===== Reduced Motion ===== */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}

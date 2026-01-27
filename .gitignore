@@ -1,0 +1,65 @@
+# Build artifacts
+bin/
+tmp/
+dist/
+
+# Database
+data/
+*.db
+*.sqlite
+
+# Environment files (keep .env.example)
+.env
+.env.local
+.env.production
+.env*.local
+
+# Certificates
+certs/
+*.pem
+*.key
+*.crt
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
+
+# Node/Frontend
+node_modules/
+.svelte-kit/
+.vercel/
+.output/
+build/
+.turbo/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.bak
+*.tmp
+PLAN.md
+plan/

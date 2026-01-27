@@ -1,0 +1,25 @@
+// Code scaffolded by goctl. Safe to edit.
+// goctl 1.9.2
+
+package auth
+
+import (
+	"net/http"
+
+	"github.com/zeromicro/go-zero/rest/httpx"
+	"gobot/internal/logic/auth"
+	"gobot/internal/svc"
+)
+
+// Get auth configuration (OAuth providers enabled)
+func GetAuthConfigHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		l := auth.NewGetAuthConfigLogic(r.Context(), svcCtx)
+		resp, err := l.GetAuthConfig()
+		if err != nil {
+			httpx.ErrorCtx(r.Context(), w, err)
+		} else {
+			httpx.OkJsonCtx(r.Context(), w, resp)
+		}
+	}
+}

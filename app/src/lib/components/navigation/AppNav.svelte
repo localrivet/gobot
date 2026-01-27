@@ -1,0 +1,225 @@
+<!--
+  AppNav Component
+  Navigation for the authenticated app dashboard
+-->
+
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { Avatar, DropdownMenu } from '$lib/components/ui';
+	import { auth, currentUser } from '$lib/stores';
+
+	interface NavItem {
+		label: string;
+		href: string;
+		icon?: 'dashboard' | 'history' | 'settings' | 'analytics';
+	}
+
+	let {
+		items = [{ label: 'Dashboard', href: '/app', icon: 'dashboard' }] as NavItem[]
+	}: {
+		items?: NavItem[];
+	} = $props();
+
+	const currentPath = $derived($page.url.pathname);
+
+	const userInitials = $derived(
+		$currentUser?.name
+			? $currentUser.name
+					.split(' ')
+					.map((n) => n[0])
+					.join('')
+					.toUpperCase()
+					.slice(0, 2)
+			: 'U'
+	);
+
+	let mobileMenuOpen = $state(false);
+
+	function toggleMobileMenu() {
+		mobileMenuOpen = !mobileMenuOpen;
+	}
+
+	function closeMobileMenu() {
+		mobileMenuOpen = false;
+	}
+
+	function handleLogout() {
+		auth.logout();
+		goto('/auth/login');
+	}
+
+	const userMenuItems = [
+		{ label: 'Settings', onClick: () => goto('/app/settings') },
+		{ separator: true, label: '' },
+		{ label: 'Sign Out', onClick: handleLogout }
+	];
+
+	const icons = {
+		dashboard: {
+			viewBox: '0 0 24 24',
+			path: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>'
+		},
+		history: {
+			viewBox: '0 0 24 24',
+			path: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
+		},
+		settings: {
+			viewBox: '0 0 24 24',
+			path: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
+		},
+		analytics: {
+			viewBox: '0 0 24 24',
+			path: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>'
+		}
+	};
+
+	function isActive(href: string): boolean {
+		if (href === '/app') {
+			return currentPath === '/app';
+		}
+		return currentPath.startsWith(href);
+	}
+</script>
+
+<header class="layout-app-header">
+	<div class="max-w-[1400px] mx-auto flex items-center justify-between gap-4">
+		<div class="flex items-center gap-8">
+			<!-- Logo -->
+			<a href="/app" class="flex items-center no-underline">
+				<span class="font-display text-xl font-bold text-base-content tracking-tight"> Gobot </span>
+			</a>
+
+			<!-- Desktop Navigation -->
+			<nav class="hidden sm:flex items-center gap-1" aria-label="Main navigation">
+				{#each items as item}
+					<a href={item.href} class="nav-link" class:active={isActive(item.href)}>
+						{#if item.icon && icons[item.icon]}
+							<svg
+								class="w-[18px] h-[18px]"
+								viewBox={icons[item.icon].viewBox}
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								{@html icons[item.icon].path}
+							</svg>
+						{/if}
+						{item.label}
+					</a>
+				{/each}
+			</nav>
+		</div>
+
+		<!-- User Menu (Desktop) -->
+		<div class="hidden sm:block">
+			<DropdownMenu items={userMenuItems}>
+				{#snippet trigger()}
+					<div
+						class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-base-200 transition-colors cursor-pointer"
+					>
+						<Avatar initials={userInitials} size="sm" />
+						<span class="text-sm font-medium text-base-content/70">
+							{$currentUser?.name ?? 'Account'}
+						</span>
+						<svg
+							class="w-4 h-4 text-base-content/50"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+						</svg>
+					</div>
+				{/snippet}
+			</DropdownMenu>
+		</div>
+
+		<!-- Mobile Menu Button -->
+		<button
+			type="button"
+			class="sm:hidden flex items-center justify-center w-10 h-10 rounded-lg text-base-content/60 hover:text-base-content hover:bg-base-200 transition-colors"
+			aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+			aria-expanded={mobileMenuOpen}
+			onclick={toggleMobileMenu}
+		>
+			{#if mobileMenuOpen}
+				<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+				</svg>
+			{:else}
+				<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+					<path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+				</svg>
+			{/if}
+		</button>
+	</div>
+
+	<!-- Mobile Menu -->
+	{#if mobileMenuOpen}
+		<div class="sm:hidden border-t border-base-300 mt-3 pt-4 animate-fade-in">
+			<nav class="space-y-1 mb-4">
+				{#each items as item}
+					<a
+						href={item.href}
+						class="nav-link"
+						class:active={isActive(item.href)}
+						onclick={closeMobileMenu}
+					>
+						{#if item.icon && icons[item.icon]}
+							<svg
+								class="w-[18px] h-[18px]"
+								viewBox={icons[item.icon].viewBox}
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								{@html icons[item.icon].path}
+							</svg>
+						{/if}
+						{item.label}
+					</a>
+				{/each}
+			</nav>
+			<div class="border-t border-base-300 pt-4 space-y-1">
+				<a
+					href="/app/settings"
+					class="nav-link"
+					class:active={currentPath.startsWith('/app/settings')}
+					onclick={closeMobileMenu}
+				>
+					<Avatar initials={userInitials} size="xs" />
+					Settings
+				</a>
+				<button
+					type="button"
+					class="nav-link w-full text-left text-error"
+					onclick={() => {
+						closeMobileMenu();
+						handleLogout();
+					}}
+				>
+					<svg
+						class="w-[18px] h-[18px]"
+						fill="none"
+						viewBox="0 0 24 24"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+						/>
+					</svg>
+					Sign Out
+				</button>
+			</div>
+		</div>
+	{/if}
+</header>

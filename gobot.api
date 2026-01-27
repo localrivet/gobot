@@ -1,0 +1,790 @@
+syntax = "v1"
+
+info (
+	title:   "gobot API"
+	desc:    "Full-stack SaaS boilerplate with Levee integration"
+	author:  "Your Team"
+	version: "1.0.0"
+)
+
+// =====================================================
+// COMMON TYPES
+// =====================================================
+type Empty {}
+
+type HealthResponse {
+	Status    string `json:"status"`
+	Version   string `json:"version"`
+	Timestamp string `json:"timestamp"`
+}
+
+type MessageResponse {
+	Message string `json:"message"`
+}
+
+// =====================================================
+// AUTH TYPES
+// =====================================================
+type LoginRequest {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LoginResponse {
+	Token        string `json:"token"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresAt    int64  `json:"expiresAt"`
+	CheckoutUrl  string `json:"checkoutUrl,optional"`
+}
+
+type RegisterRequest {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
+	Plan     string `json:"plan,optional"`
+}
+
+type RefreshTokenRequest {
+	RefreshToken string `json:"refreshToken"`
+}
+
+type RefreshTokenResponse {
+	Token        string `json:"token"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresAt    int64  `json:"expiresAt"`
+}
+
+type EmailVerificationRequest {
+	Token string `json:"token"`
+}
+
+type ResendVerificationRequest {
+	Email string `json:"email"`
+}
+
+type ForgotPasswordRequest {
+	Email string `json:"email"`
+}
+
+type ResetPasswordRequest {
+	Token       string `json:"token"`
+	NewPassword string `json:"newPassword"`
+}
+
+type AuthConfigResponse {
+	GoogleEnabled bool `json:"googleEnabled"`
+	GitHubEnabled bool `json:"githubEnabled"`
+}
+
+// =====================================================
+// USER TYPES
+// =====================================================
+type User {
+	Id            string `json:"id"`
+	Email         string `json:"email"`
+	Name          string `json:"name"`
+	AvatarUrl     string `json:"avatarUrl,omitempty"`
+	EmailVerified bool   `json:"emailVerified"`
+	CreatedAt     string `json:"createdAt"`
+	UpdatedAt     string `json:"updatedAt"`
+}
+
+type GetUserResponse {
+	User User `json:"user"`
+}
+
+type UpdateUserRequest {
+	Name      string `json:"name,optional"`
+	AvatarUrl string `json:"avatarUrl,optional"`
+}
+
+type ChangePasswordRequest {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
+type DeleteAccountRequest {
+	Password string `json:"password"`
+}
+
+type UserPreferences {
+	EmailNotifications bool   `json:"emailNotifications"`
+	MarketingEmails    bool   `json:"marketingEmails"`
+	Timezone           string `json:"timezone"`
+	Language           string `json:"language"`
+	Theme              string `json:"theme"`
+}
+
+type GetPreferencesResponse {
+	Preferences UserPreferences `json:"preferences"`
+}
+
+type UpdatePreferencesRequest {
+	EmailNotifications bool   `json:"emailNotifications,optional"`
+	MarketingEmails    bool   `json:"marketingEmails,optional"`
+	Timezone           string `json:"timezone,optional"`
+	Language           string `json:"language,optional"`
+	Theme              string `json:"theme,optional"`
+}
+
+// =====================================================
+// SUBSCRIPTION TYPES
+// =====================================================
+type SubscriptionPlan {
+	Id          string   `json:"id"`
+	Name        string   `json:"name"`
+	DisplayName string   `json:"displayName"`
+	Description string   `json:"description"`
+	Price       int      `json:"price"`
+	Currency    string   `json:"currency"`
+	Interval    string   `json:"interval"`
+	Features    []string `json:"features"`
+}
+
+type ListPlansResponse {
+	Plans []SubscriptionPlan `json:"plans"`
+}
+
+type UserSubscription {
+	Id                 string `json:"id"`
+	PlanId             string `json:"planId"`
+	PlanName           string `json:"planName"`
+	Status             string `json:"status"`
+	BillingCycle       string `json:"billingCycle"`
+	CurrentPeriodStart string `json:"currentPeriodStart,omitempty"`
+	CurrentPeriodEnd   string `json:"currentPeriodEnd,omitempty"`
+	TrialEnd           string `json:"trialEnd,omitempty"`
+	CancelAtPeriodEnd  bool   `json:"cancelAtPeriodEnd"`
+}
+
+type GetSubscriptionResponse {
+	Subscription UserSubscription `json:"subscription"`
+	Plan         SubscriptionPlan `json:"plan"`
+}
+
+type CreateCheckoutRequest {
+	PlanName     string `json:"planName"`
+	BillingCycle string `json:"billingCycle,optional"`
+}
+
+type CreateCheckoutResponse {
+	CheckoutUrl string `json:"checkoutUrl"`
+}
+
+type CreateBillingPortalResponse {
+	PortalUrl string `json:"portalUrl"`
+}
+
+type CancelSubscriptionRequest {
+	CancelAtPeriodEnd bool `json:"cancelAtPeriodEnd,optional"`
+}
+
+type CancelSubscriptionResponse {
+	Message     string `json:"message"`
+	CancelledAt string `json:"cancelledAt,omitempty"`
+	EffectiveAt string `json:"effectiveAt,omitempty"`
+}
+
+type CheckFeatureRequest {
+	Feature string `json:"feature"`
+}
+
+type CheckFeatureResponse {
+	HasAccess bool   `json:"hasAccess"`
+	Feature   string `json:"feature"`
+	PlanName  string `json:"planName"`
+	Message   string `json:"message,omitempty"`
+}
+
+type UsageStats {
+	PeriodStart string         `json:"periodStart"`
+	PeriodEnd   string         `json:"periodEnd"`
+	Meters      map[string]int `json:"meters"`
+}
+
+type GetUsageStatsResponse {
+	Stats UsageStats `json:"stats"`
+}
+
+type BillingRecord {
+	Id               string `json:"id"`
+	Amount           int    `json:"amount"`
+	Currency         string `json:"currency"`
+	Status           string `json:"status"`
+	Description      string `json:"description,omitempty"`
+	InvoiceDate      string `json:"invoiceDate"`
+	PaidAt           string `json:"paidAt,omitempty"`
+	InvoicePdfUrl    string `json:"invoicePdfUrl,omitempty"`
+	HostedInvoiceUrl string `json:"hostedInvoiceUrl,omitempty"`
+}
+
+type ListBillingHistoryRequest {
+	Page     int `form:"page,optional"`
+	PageSize int `form:"pageSize,optional"`
+}
+
+type ListBillingHistoryResponse {
+	Records    []BillingRecord `json:"records"`
+	TotalCount int             `json:"totalCount"`
+	Page       int             `json:"page"`
+	PageSize   int             `json:"pageSize"`
+}
+
+// =====================================================
+// SERVICES
+// =====================================================
+service gobot {
+	@doc "Health check endpoint"
+	@handler HealthCheck
+	get /health returns (HealthResponse)
+}
+
+@server (
+	prefix: /api/v1
+	group:  auth
+)
+service gobot {
+	@doc "User login"
+	@handler Login
+	post /auth/login (LoginRequest) returns (LoginResponse)
+
+	@doc "Register new user"
+	@handler Register
+	post /auth/register (RegisterRequest) returns (LoginResponse)
+
+	@doc "Refresh authentication token"
+	@handler RefreshToken
+	post /auth/refresh (RefreshTokenRequest) returns (RefreshTokenResponse)
+
+	@doc "Request password reset"
+	@handler ForgotPassword
+	post /auth/forgot-password (ForgotPasswordRequest) returns (MessageResponse)
+
+	@doc "Reset password with token"
+	@handler ResetPassword
+	post /auth/reset-password (ResetPasswordRequest) returns (MessageResponse)
+
+	@doc "Verify email address with token"
+	@handler VerifyEmail
+	post /auth/verify-email (EmailVerificationRequest) returns (MessageResponse)
+
+	@doc "Resend email verification"
+	@handler ResendVerification
+	post /auth/resend-verification (ResendVerificationRequest) returns (MessageResponse)
+
+	@doc "Get auth configuration (OAuth providers enabled)"
+	@handler GetAuthConfig
+	get /auth/config returns (AuthConfigResponse)
+}
+
+@server (
+	prefix: /api/v1
+	group:  subscription
+)
+service gobot {
+	@doc "List all available subscription plans"
+	@handler ListPlans
+	get /subscription/plans returns (ListPlansResponse)
+}
+
+@server (
+	prefix: /api/v1
+	group:  user
+	jwt:    Auth
+)
+service gobot {
+	@doc "Get current user profile"
+	@handler GetCurrentUser
+	get /user/me returns (GetUserResponse)
+
+	@doc "Update current user profile"
+	@handler UpdateCurrentUser
+	put /user/me (UpdateUserRequest) returns (GetUserResponse)
+
+	@doc "Delete current user account"
+	@handler DeleteAccount
+	delete /user/me (DeleteAccountRequest) returns (MessageResponse)
+
+	@doc "Change password for authenticated user"
+	@handler ChangePassword
+	post /user/me/change-password (ChangePasswordRequest) returns (MessageResponse)
+
+	@doc "Get user preferences"
+	@handler GetPreferences
+	get /user/me/preferences returns (GetPreferencesResponse)
+
+	@doc "Update user preferences"
+	@handler UpdatePreferences
+	put /user/me/preferences (UpdatePreferencesRequest) returns (GetPreferencesResponse)
+}
+
+@server (
+	prefix: /api/v1
+	group:  subscription
+	jwt:    Auth
+)
+service gobot {
+	@doc "Get current user's subscription"
+	@handler GetSubscription
+	get /subscription returns (GetSubscriptionResponse)
+
+	@doc "Create checkout session to subscribe to a plan"
+	@handler CreateCheckout
+	post /subscription/checkout (CreateCheckoutRequest) returns (CreateCheckoutResponse)
+
+	@doc "Create billing portal session for subscription management"
+	@handler CreateBillingPortal
+	post /subscription/billing-portal returns (CreateBillingPortalResponse)
+
+	@doc "Cancel current subscription"
+	@handler CancelSubscription
+	post /subscription/cancel (CancelSubscriptionRequest) returns (CancelSubscriptionResponse)
+
+	@doc "Check if user has access to a feature"
+	@handler CheckFeature
+	post /subscription/check-feature (CheckFeatureRequest) returns (CheckFeatureResponse)
+
+	@doc "Get current usage statistics"
+	@handler GetUsageStats
+	get /subscription/usage returns (GetUsageStatsResponse)
+
+	@doc "Get billing history"
+	@handler ListBillingHistory
+	get /subscription/billing-history (ListBillingHistoryRequest) returns (ListBillingHistoryResponse)
+}
+
+// =====================================================
+// ADMIN/BACKOFFICE TYPES
+// =====================================================
+type AdminStatsResponse {
+	TotalUsers          int    `json:"totalUsers"`
+	ActiveSubscriptions int    `json:"activeSubscriptions"`
+	TrialSubscriptions  int    `json:"trialSubscriptions"`
+	MonthlyRevenue      int    `json:"monthlyRevenue"`
+	Currency            string `json:"currency"`
+	NewUsersToday       int    `json:"newUsersToday"`
+	NewUsersThisWeek    int    `json:"newUsersThisWeek"`
+	NewUsersThisMonth   int    `json:"newUsersThisMonth"`
+}
+
+type AdminUser {
+	Id        string `json:"id"`
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	Plan      string `json:"plan"`
+	Status    string `json:"status"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type AdminListUsersRequest {
+	Page     int    `form:"page,optional"`
+	PageSize int    `form:"pageSize,optional"`
+	Search   string `form:"search,optional"`
+}
+
+type AdminListUsersResponse {
+	Users      []AdminUser `json:"users"`
+	TotalCount int         `json:"totalCount"`
+	Page       int         `json:"page"`
+	PageSize   int         `json:"pageSize"`
+}
+
+type AdminSubscription {
+	Id        string `json:"id"`
+	UserId    string `json:"userId"`
+	UserEmail string `json:"userEmail"`
+	PlanName  string `json:"planName"`
+	Status    string `json:"status"`
+	Amount    int    `json:"amount"`
+	Currency  string `json:"currency"`
+	Interval  string `json:"interval"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type AdminListSubscriptionsRequest {
+	Page     int    `form:"page,optional"`
+	PageSize int    `form:"pageSize,optional"`
+	Status   string `form:"status,optional"`
+}
+
+type AdminListSubscriptionsResponse {
+	Subscriptions []AdminSubscription `json:"subscriptions"`
+	TotalCount    int                 `json:"totalCount"`
+	Page          int                 `json:"page"`
+	PageSize      int                 `json:"pageSize"`
+}
+
+@server (
+	prefix:     /api/v1
+	group:      admin
+	jwt:        Auth
+	middleware: AdminAuth
+)
+service gobot {
+	@doc "Get admin dashboard stats"
+	@handler GetAdminStats
+	get /admin/stats returns (AdminStatsResponse)
+
+	@doc "List all users (paginated)"
+	@handler AdminListUsers
+	get /admin/users (AdminListUsersRequest) returns (AdminListUsersResponse)
+
+	@doc "List all subscriptions (paginated)"
+	@handler AdminListSubscriptions
+	get /admin/subscriptions (AdminListSubscriptionsRequest) returns (AdminListSubscriptionsResponse)
+}
+
+// =====================================================
+// ORGANIZATION TYPES
+// =====================================================
+type Organization {
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	Slug      string `json:"slug"`
+	LogoUrl   string `json:"logoUrl,omitempty"`
+	OwnerId   string `json:"ownerId"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
+type OrganizationMember {
+	Id        string `json:"id"`
+	UserId    string `json:"userId"`
+	Email     string `json:"email"`
+	Name      string `json:"name"`
+	AvatarUrl string `json:"avatarUrl,omitempty"`
+	Role      string `json:"role"`
+	JoinedAt  string `json:"joinedAt"`
+}
+
+type OrganizationInvite {
+	Id               string `json:"id"`
+	Email            string `json:"email"`
+	Role             string `json:"role"`
+	InviterName      string `json:"inviterName"`
+	InviterEmail     string `json:"inviterEmail"`
+	OrganizationName string `json:"organizationName,omitempty"`
+	ExpiresAt        string `json:"expiresAt"`
+	CreatedAt        string `json:"createdAt"`
+}
+
+type CreateOrganizationRequest {
+	Name    string `json:"name"`
+	Slug    string `json:"slug,optional"`
+	LogoUrl string `json:"logoUrl,optional"`
+}
+
+type CreateOrganizationResponse {
+	Organization Organization `json:"organization"`
+}
+
+type GetOrganizationResponse {
+	Organization Organization `json:"organization"`
+	Role         string       `json:"role"`
+}
+
+type ListOrganizationsResponse {
+	Organizations []Organization `json:"organizations"`
+}
+
+type UpdateOrganizationRequest {
+	Id      string `path:"id"`
+	Name    string `json:"name,optional"`
+	Slug    string `json:"slug,optional"`
+	LogoUrl string `json:"logoUrl,optional"`
+}
+
+type ListMembersResponse {
+	Members []OrganizationMember `json:"members"`
+}
+
+type InviteMemberRequest {
+	Id    string `path:"id"`
+	Email string `json:"email"`
+	Role  string `json:"role,optional"`
+}
+
+type InviteMemberResponse {
+	Invite OrganizationInvite `json:"invite"`
+}
+
+type ListInvitesResponse {
+	Invites []OrganizationInvite `json:"invites"`
+}
+
+type UpdateMemberRoleRequest {
+	OrgId  string `path:"orgId"`
+	UserId string `path:"userId"`
+	Role   string `json:"role"`
+}
+
+type AcceptInviteRequest {
+	Token string `json:"token"`
+}
+
+type AcceptInviteResponse {
+	Organization Organization `json:"organization"`
+	Message      string       `json:"message"`
+}
+
+type GetInviteByTokenRequest {
+	Token string `path:"token"`
+}
+
+type GetInviteByTokenResponse {
+	Invite           OrganizationInvite `json:"invite"`
+	OrganizationName string             `json:"organizationName"`
+	OrganizationSlug string             `json:"organizationSlug"`
+}
+
+type SwitchOrganizationRequest {
+	OrganizationId string `json:"organizationId"`
+}
+
+type GetOrganizationRequest {
+	Id string `path:"id"`
+}
+
+type DeleteOrganizationRequest {
+	Id string `path:"id"`
+}
+
+type ListMembersRequest {
+	Id string `path:"id"`
+}
+
+type ListInvitesRequest {
+	Id string `path:"id"`
+}
+
+type LeaveOrganizationRequest {
+	Id string `path:"id"`
+}
+
+type RevokeInviteRequest {
+	OrgId    string `path:"orgId"`
+	InviteId string `path:"inviteId"`
+}
+
+type RemoveMemberRequest {
+	OrgId  string `path:"orgId"`
+	UserId string `path:"userId"`
+}
+
+// =====================================================
+// NOTIFICATION TYPES
+// =====================================================
+type Notification {
+	Id        string `json:"id"`
+	Type      string `json:"type"`
+	Title     string `json:"title"`
+	Body      string `json:"body,omitempty"`
+	ActionUrl string `json:"actionUrl,omitempty"`
+	Icon      string `json:"icon,omitempty"`
+	ReadAt    string `json:"readAt,omitempty"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type ListNotificationsRequest {
+	Page     int  `form:"page,optional"`
+	PageSize int  `form:"pageSize,optional"`
+	Unread   bool `form:"unread,optional"`
+}
+
+type ListNotificationsResponse {
+	Notifications []Notification `json:"notifications"`
+	UnreadCount   int            `json:"unreadCount"`
+	TotalCount    int            `json:"totalCount"`
+}
+
+type GetUnreadCountResponse {
+	Count int `json:"count"`
+}
+
+type MarkNotificationReadRequest {
+	Id string `path:"id"`
+}
+
+type DeleteNotificationRequest {
+	Id string `path:"id"`
+}
+
+// =====================================================
+// OAUTH TYPES
+// =====================================================
+type OAuthProvider {
+	Name      string `json:"name"`
+	Connected bool   `json:"connected"`
+	Email     string `json:"email,omitempty"`
+}
+
+type ListOAuthProvidersResponse {
+	Providers []OAuthProvider `json:"providers"`
+}
+
+type OAuthLoginRequest {
+	Provider string `path:"provider"`
+	Code     string `json:"code"`
+	State    string `json:"state,optional"`
+}
+
+type OAuthLoginResponse {
+	Token        string `json:"token"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresAt    int64  `json:"expiresAt"`
+	IsNewUser    bool   `json:"isNewUser"`
+}
+
+type GetOAuthUrlRequest {
+	Provider    string `path:"provider"`
+	RedirectUrl string `form:"redirectUrl,optional"`
+}
+
+type GetOAuthUrlResponse {
+	Url   string `json:"url"`
+	State string `json:"state"`
+}
+
+type DisconnectOAuthRequest {
+	Provider string `path:"provider"`
+}
+
+// =====================================================
+// ORGANIZATION SERVICES
+// =====================================================
+@server (
+	prefix: /api/v1
+	group:  organization
+	jwt:    Auth
+)
+service gobot {
+	@doc "Create a new organization"
+	@handler CreateOrganization
+	post /organizations (CreateOrganizationRequest) returns (CreateOrganizationResponse)
+
+	@doc "List user's organizations"
+	@handler ListOrganizations
+	get /organizations returns (ListOrganizationsResponse)
+
+	@doc "Get organization by ID"
+	@handler GetOrganization
+	get /organizations/:id (GetOrganizationRequest) returns (GetOrganizationResponse)
+
+	@doc "Update organization"
+	@handler UpdateOrganization
+	put /organizations/:id (UpdateOrganizationRequest) returns (GetOrganizationResponse)
+
+	@doc "Delete organization"
+	@handler DeleteOrganization
+	delete /organizations/:id (DeleteOrganizationRequest) returns (MessageResponse)
+
+	@doc "List organization members"
+	@handler ListMembers
+	get /organizations/:id/members (ListMembersRequest) returns (ListMembersResponse)
+
+	@doc "Invite member to organization"
+	@handler InviteMember
+	post /organizations/:id/invites (InviteMemberRequest) returns (InviteMemberResponse)
+
+	@doc "List pending invites"
+	@handler ListInvites
+	get /organizations/:id/invites (ListInvitesRequest) returns (ListInvitesResponse)
+
+	@doc "Revoke invite"
+	@handler RevokeInvite
+	delete /organizations/:orgId/invites/:inviteId (RevokeInviteRequest) returns (MessageResponse)
+
+	@doc "Update member role"
+	@handler UpdateMemberRole
+	put /organizations/:orgId/members/:userId (UpdateMemberRoleRequest) returns (MessageResponse)
+
+	@doc "Remove member from organization"
+	@handler RemoveMember
+	delete /organizations/:orgId/members/:userId (RemoveMemberRequest) returns (MessageResponse)
+
+	@doc "Leave organization"
+	@handler LeaveOrganization
+	post /organizations/:id/leave (LeaveOrganizationRequest) returns (MessageResponse)
+
+	@doc "Switch current organization"
+	@handler SwitchOrganization
+	post /organizations/switch (SwitchOrganizationRequest) returns (MessageResponse)
+
+	@doc "Accept organization invite"
+	@handler AcceptInvite
+	post /organizations/invites/accept (AcceptInviteRequest) returns (AcceptInviteResponse)
+}
+
+// Public invite endpoint (no auth required to view invite details)
+@server (
+	prefix: /api/v1
+	group:  organization
+)
+service gobot {
+	@doc "Get invite details by token"
+	@handler GetInviteByToken
+	get /organizations/invites/:token (GetInviteByTokenRequest) returns (GetInviteByTokenResponse)
+}
+
+// =====================================================
+// NOTIFICATION SERVICES
+// =====================================================
+@server (
+	prefix: /api/v1
+	group:  notification
+	jwt:    Auth
+)
+service gobot {
+	@doc "List user notifications"
+	@handler ListNotifications
+	get /notifications (ListNotificationsRequest) returns (ListNotificationsResponse)
+
+	@doc "Get unread notification count"
+	@handler GetUnreadCount
+	get /notifications/unread-count returns (GetUnreadCountResponse)
+
+	@doc "Mark notification as read"
+	@handler MarkNotificationRead
+	put /notifications/:id/read (MarkNotificationReadRequest) returns (MessageResponse)
+
+	@doc "Mark all notifications as read"
+	@handler MarkAllNotificationsRead
+	put /notifications/read-all returns (MessageResponse)
+
+	@doc "Delete notification"
+	@handler DeleteNotification
+	delete /notifications/:id (DeleteNotificationRequest) returns (MessageResponse)
+}
+
+// =====================================================
+// OAUTH SERVICES
+// =====================================================
+@server (
+	prefix: /api/v1
+	group:  oauth
+)
+service gobot {
+	@doc "Get OAuth authorization URL"
+	@handler GetOAuthUrl
+	get /oauth/:provider/url (GetOAuthUrlRequest) returns (GetOAuthUrlResponse)
+
+	@doc "OAuth callback - exchange code for tokens"
+	@handler OAuthCallback
+	post /oauth/:provider/callback (OAuthLoginRequest) returns (OAuthLoginResponse)
+}
+
+@server (
+	prefix: /api/v1
+	group:  oauth
+	jwt:    Auth
+)
+service gobot {
+	@doc "List connected OAuth providers"
+	@handler ListOAuthProviders
+	get /oauth/providers returns (ListOAuthProvidersResponse)
+
+	@doc "Disconnect OAuth provider"
+	@handler DisconnectOAuth
+	delete /oauth/:provider (DisconnectOAuthRequest) returns (MessageResponse)
+}
+
