@@ -114,6 +114,41 @@ policy:
 | `vision` | Analyze images with AI | No |
 | `memory` | Persistent fact storage | No |
 | `cron` | Schedule recurring tasks | Yes |
+| `task` | Spawn sub-agents for parallel work | No |
+| `agent_status` | Check/list/cancel sub-agents | No |
+
+## Sub-Agent System
+
+The `task` tool enables spawning autonomous sub-agents for complex, multi-step tasks:
+
+```
+Parent Agent
+    │
+    ├─► spawn_agent("Research Go testing frameworks", wait=false)
+    │       └─► Sub-Agent 1 (exploring, reading docs)
+    │
+    ├─► spawn_agent("Find authentication bugs", wait=false)
+    │       └─► Sub-Agent 2 (searching codebase)
+    │
+    └─► spawn_agent("Write API documentation", wait=true)
+            └─► Sub-Agent 3 (blocking until complete)
+```
+
+**Features:**
+- **Concurrent execution** - Up to 5 sub-agents running in parallel
+- **Specialized agents** - `explore`, `plan`, or `general` agent types
+- **Background tasks** - Non-blocking with status checking
+- **Automatic cleanup** - Completed agents are cleaned up automatically
+
+**Example LLM usage:**
+```json
+{"name": "task", "input": {
+  "description": "Research testing",
+  "prompt": "Find and analyze all test files, report coverage gaps",
+  "agent_type": "explore",
+  "wait": false
+}}
+```
 
 ---
 

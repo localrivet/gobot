@@ -207,6 +207,15 @@ func runChat(cfg *config.Config, args []string, interactive bool, dangerously bo
 	registry := tools.NewRegistry(policy)
 	registry.RegisterDefaults()
 
+	// Register task tools with orchestrator for sub-agent support
+	taskTool := tools.NewTaskTool()
+	taskTool.CreateOrchestrator(cfg, sessions, providers, registry)
+	registry.Register(taskTool)
+
+	agentStatusTool := tools.NewAgentStatusTool()
+	agentStatusTool.SetOrchestrator(taskTool.GetOrchestrator())
+	registry.Register(agentStatusTool)
+
 	// Create runner
 	r := runner.New(cfg, sessions, providers, registry)
 
@@ -682,6 +691,15 @@ func runAgent(cfg *config.Config, orgID, agentID, serverURL, token string, dange
 	}
 	registry := tools.NewRegistry(policy)
 	registry.RegisterDefaults()
+
+	// Register task tools with orchestrator for sub-agent support
+	taskTool := tools.NewTaskTool()
+	taskTool.CreateOrchestrator(cfg, sessions, providers, registry)
+	registry.Register(taskTool)
+
+	agentStatusTool := tools.NewAgentStatusTool()
+	agentStatusTool.SetOrchestrator(taskTool.GetOrchestrator())
+	registry.Register(agentStatusTool)
 
 	// Create runner
 	r := runner.New(cfg, sessions, providers, registry)
