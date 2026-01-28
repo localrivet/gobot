@@ -10,26 +10,19 @@ export function healthCheck() {
 }
 
 /**
- * @description "Get admin dashboard stats"
+ * @description "List connected agents for organization"
+ * @param params
  */
-export function getAdminStats() {
-	return webapi.get<components.AdminStatsResponse>(`/api/v1/admin/stats`)
+export function listAgents(params: components.ListAgentsRequestParams, orgId: string) {
+	return webapi.get<components.ListAgentsResponse>(`/api/v1/agents`, params)
 }
 
 /**
- * @description "List all subscriptions (paginated)"
+ * @description "Get agent status"
  * @param params
  */
-export function adminListSubscriptions(params: components.AdminListSubscriptionsRequestParams) {
-	return webapi.get<components.AdminListSubscriptionsResponse>(`/api/v1/admin/subscriptions`, params)
-}
-
-/**
- * @description "List all users (paginated)"
- * @param params
- */
-export function adminListUsers(params: components.AdminListUsersRequestParams) {
-	return webapi.get<components.AdminListUsersResponse>(`/api/v1/admin/users`, params)
+export function getAgentStatus(params: components.AgentStatusRequestParams, agentId: string) {
+	return webapi.get<components.AgentStatusResponse>(`/api/v1/agents/${agentId}/status`, params)
 }
 
 /**
@@ -288,63 +281,18 @@ export function getInviteByToken(params: components.GetInviteByTokenRequestParam
 }
 
 /**
- * @description "List all available subscription plans"
- */
-export function listPlans() {
-	return webapi.get<components.ListPlansResponse>(`/api/v1/subscription/plans`)
-}
-
-/**
- * @description "Get current user's subscription"
- */
-export function getSubscription() {
-	return webapi.get<components.GetSubscriptionResponse>(`/api/v1/subscription`)
-}
-
-/**
- * @description "Get billing history"
- * @param params
- */
-export function listBillingHistory(params: components.ListBillingHistoryRequestParams) {
-	return webapi.get<components.ListBillingHistoryResponse>(`/api/v1/subscription/billing-history`, params)
-}
-
-/**
- * @description "Create billing portal session for subscription management"
- */
-export function createBillingPortal() {
-	return webapi.post<components.CreateBillingPortalResponse>(`/api/v1/subscription/billing-portal`)
-}
-
-/**
- * @description "Cancel current subscription"
+ * @description "Create the first admin user (only works when no admin exists)"
  * @param req
  */
-export function cancelSubscription(req: components.CancelSubscriptionRequest) {
-	return webapi.post<components.CancelSubscriptionResponse>(`/api/v1/subscription/cancel`, req)
+export function createAdmin(req: components.CreateAdminRequest) {
+	return webapi.post<components.CreateAdminResponse>(`/api/v1/setup/admin`, req)
 }
 
 /**
- * @description "Check if user has access to a feature"
- * @param req
+ * @description "Check if setup is required (no admin exists)"
  */
-export function checkFeature(req: components.CheckFeatureRequest) {
-	return webapi.post<components.CheckFeatureResponse>(`/api/v1/subscription/check-feature`, req)
-}
-
-/**
- * @description "Create checkout session to subscribe to a plan"
- * @param req
- */
-export function createCheckout(req: components.CreateCheckoutRequest) {
-	return webapi.post<components.CreateCheckoutResponse>(`/api/v1/subscription/checkout`, req)
-}
-
-/**
- * @description "Get current usage statistics"
- */
-export function getUsageStats() {
-	return webapi.get<components.GetUsageStatsResponse>(`/api/v1/subscription/usage`)
+export function setupStatus() {
+	return webapi.get<components.SetupStatusResponse>(`/api/v1/setup/status`)
 }
 
 /**

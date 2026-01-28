@@ -2,10 +2,31 @@ syntax = "v1"
 
 info (
 	title:   "gobot API"
-	desc:    "Full-stack SaaS boilerplate with Levee integration"
-	author:  "Your Team"
+	desc:    "Open source AI assistant platform"
+	author:  "GoBot Team"
 	version: "1.0.0"
 )
+
+// =====================================================
+// SETUP TYPES (First-run onboarding)
+// =====================================================
+type SetupStatusResponse {
+	SetupRequired bool `json:"setupRequired"`
+	HasAdmin      bool `json:"hasAdmin"`
+}
+
+type CreateAdminRequest {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
+}
+
+type CreateAdminResponse {
+	Token        string `json:"token"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresAt    int64  `json:"expiresAt"`
+	User         User   `json:"user"`
+}
 
 // =====================================================
 // COMMON TYPES
@@ -34,14 +55,12 @@ type LoginResponse {
 	Token        string `json:"token"`
 	RefreshToken string `json:"refreshToken"`
 	ExpiresAt    int64  `json:"expiresAt"`
-	CheckoutUrl  string `json:"checkoutUrl,optional"`
 }
 
 type RegisterRequest {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Name     string `json:"name"`
-	Plan     string `json:"plan,optional"`
 }
 
 type RefreshTokenRequest {
@@ -128,115 +147,29 @@ type UpdatePreferencesRequest {
 }
 
 // =====================================================
-// SUBSCRIPTION TYPES
-// =====================================================
-type SubscriptionPlan {
-	Id          string   `json:"id"`
-	Name        string   `json:"name"`
-	DisplayName string   `json:"displayName"`
-	Description string   `json:"description"`
-	Price       int      `json:"price"`
-	Currency    string   `json:"currency"`
-	Interval    string   `json:"interval"`
-	Features    []string `json:"features"`
-}
-
-type ListPlansResponse {
-	Plans []SubscriptionPlan `json:"plans"`
-}
-
-type UserSubscription {
-	Id                 string `json:"id"`
-	PlanId             string `json:"planId"`
-	PlanName           string `json:"planName"`
-	Status             string `json:"status"`
-	BillingCycle       string `json:"billingCycle"`
-	CurrentPeriodStart string `json:"currentPeriodStart,omitempty"`
-	CurrentPeriodEnd   string `json:"currentPeriodEnd,omitempty"`
-	TrialEnd           string `json:"trialEnd,omitempty"`
-	CancelAtPeriodEnd  bool   `json:"cancelAtPeriodEnd"`
-}
-
-type GetSubscriptionResponse {
-	Subscription UserSubscription `json:"subscription"`
-	Plan         SubscriptionPlan `json:"plan"`
-}
-
-type CreateCheckoutRequest {
-	PlanName     string `json:"planName"`
-	BillingCycle string `json:"billingCycle,optional"`
-}
-
-type CreateCheckoutResponse {
-	CheckoutUrl string `json:"checkoutUrl"`
-}
-
-type CreateBillingPortalResponse {
-	PortalUrl string `json:"portalUrl"`
-}
-
-type CancelSubscriptionRequest {
-	CancelAtPeriodEnd bool `json:"cancelAtPeriodEnd,optional"`
-}
-
-type CancelSubscriptionResponse {
-	Message     string `json:"message"`
-	CancelledAt string `json:"cancelledAt,omitempty"`
-	EffectiveAt string `json:"effectiveAt,omitempty"`
-}
-
-type CheckFeatureRequest {
-	Feature string `json:"feature"`
-}
-
-type CheckFeatureResponse {
-	HasAccess bool   `json:"hasAccess"`
-	Feature   string `json:"feature"`
-	PlanName  string `json:"planName"`
-	Message   string `json:"message,omitempty"`
-}
-
-type UsageStats {
-	PeriodStart string         `json:"periodStart"`
-	PeriodEnd   string         `json:"periodEnd"`
-	Meters      map[string]int `json:"meters"`
-}
-
-type GetUsageStatsResponse {
-	Stats UsageStats `json:"stats"`
-}
-
-type BillingRecord {
-	Id               string `json:"id"`
-	Amount           int    `json:"amount"`
-	Currency         string `json:"currency"`
-	Status           string `json:"status"`
-	Description      string `json:"description,omitempty"`
-	InvoiceDate      string `json:"invoiceDate"`
-	PaidAt           string `json:"paidAt,omitempty"`
-	InvoicePdfUrl    string `json:"invoicePdfUrl,omitempty"`
-	HostedInvoiceUrl string `json:"hostedInvoiceUrl,omitempty"`
-}
-
-type ListBillingHistoryRequest {
-	Page     int `form:"page,optional"`
-	PageSize int `form:"pageSize,optional"`
-}
-
-type ListBillingHistoryResponse {
-	Records    []BillingRecord `json:"records"`
-	TotalCount int             `json:"totalCount"`
-	Page       int             `json:"page"`
-	PageSize   int             `json:"pageSize"`
-}
-
-// =====================================================
 // SERVICES
 // =====================================================
 service gobot {
 	@doc "Health check endpoint"
 	@handler HealthCheck
 	get /health returns (HealthResponse)
+}
+
+// =====================================================
+// SETUP SERVICES (First-run onboarding)
+// =====================================================
+@server (
+	prefix: /api/v1
+	group:  setup
+)
+service gobot {
+	@doc "Check if setup is required (no admin exists)"
+	@handler SetupStatus
+	get /setup/status returns (SetupStatusResponse)
+
+	@doc "Create the first admin user (only works when no admin exists)"
+	@handler CreateAdmin
+	post /setup/admin (CreateAdminRequest) returns (CreateAdminResponse)
 }
 
 @server (
@@ -279,16 +212,6 @@ service gobot {
 
 @server (
 	prefix: /api/v1
-	group:  subscription
-)
-service gobot {
-	@doc "List all available subscription plans"
-	@handler ListPlans
-	get /subscription/plans returns (ListPlansResponse)
-}
-
-@server (
-	prefix: /api/v1
 	group:  user
 	jwt:    Auth
 )
@@ -316,122 +239,6 @@ service gobot {
 	@doc "Update user preferences"
 	@handler UpdatePreferences
 	put /user/me/preferences (UpdatePreferencesRequest) returns (GetPreferencesResponse)
-}
-
-@server (
-	prefix: /api/v1
-	group:  subscription
-	jwt:    Auth
-)
-service gobot {
-	@doc "Get current user's subscription"
-	@handler GetSubscription
-	get /subscription returns (GetSubscriptionResponse)
-
-	@doc "Create checkout session to subscribe to a plan"
-	@handler CreateCheckout
-	post /subscription/checkout (CreateCheckoutRequest) returns (CreateCheckoutResponse)
-
-	@doc "Create billing portal session for subscription management"
-	@handler CreateBillingPortal
-	post /subscription/billing-portal returns (CreateBillingPortalResponse)
-
-	@doc "Cancel current subscription"
-	@handler CancelSubscription
-	post /subscription/cancel (CancelSubscriptionRequest) returns (CancelSubscriptionResponse)
-
-	@doc "Check if user has access to a feature"
-	@handler CheckFeature
-	post /subscription/check-feature (CheckFeatureRequest) returns (CheckFeatureResponse)
-
-	@doc "Get current usage statistics"
-	@handler GetUsageStats
-	get /subscription/usage returns (GetUsageStatsResponse)
-
-	@doc "Get billing history"
-	@handler ListBillingHistory
-	get /subscription/billing-history (ListBillingHistoryRequest) returns (ListBillingHistoryResponse)
-}
-
-// =====================================================
-// ADMIN/BACKOFFICE TYPES
-// =====================================================
-type AdminStatsResponse {
-	TotalUsers          int    `json:"totalUsers"`
-	ActiveSubscriptions int    `json:"activeSubscriptions"`
-	TrialSubscriptions  int    `json:"trialSubscriptions"`
-	MonthlyRevenue      int    `json:"monthlyRevenue"`
-	Currency            string `json:"currency"`
-	NewUsersToday       int    `json:"newUsersToday"`
-	NewUsersThisWeek    int    `json:"newUsersThisWeek"`
-	NewUsersThisMonth   int    `json:"newUsersThisMonth"`
-}
-
-type AdminUser {
-	Id        string `json:"id"`
-	Email     string `json:"email"`
-	Name      string `json:"name"`
-	Plan      string `json:"plan"`
-	Status    string `json:"status"`
-	CreatedAt string `json:"createdAt"`
-}
-
-type AdminListUsersRequest {
-	Page     int    `form:"page,optional"`
-	PageSize int    `form:"pageSize,optional"`
-	Search   string `form:"search,optional"`
-}
-
-type AdminListUsersResponse {
-	Users      []AdminUser `json:"users"`
-	TotalCount int         `json:"totalCount"`
-	Page       int         `json:"page"`
-	PageSize   int         `json:"pageSize"`
-}
-
-type AdminSubscription {
-	Id        string `json:"id"`
-	UserId    string `json:"userId"`
-	UserEmail string `json:"userEmail"`
-	PlanName  string `json:"planName"`
-	Status    string `json:"status"`
-	Amount    int    `json:"amount"`
-	Currency  string `json:"currency"`
-	Interval  string `json:"interval"`
-	CreatedAt string `json:"createdAt"`
-}
-
-type AdminListSubscriptionsRequest {
-	Page     int    `form:"page,optional"`
-	PageSize int    `form:"pageSize,optional"`
-	Status   string `form:"status,optional"`
-}
-
-type AdminListSubscriptionsResponse {
-	Subscriptions []AdminSubscription `json:"subscriptions"`
-	TotalCount    int                 `json:"totalCount"`
-	Page          int                 `json:"page"`
-	PageSize      int                 `json:"pageSize"`
-}
-
-@server (
-	prefix:     /api/v1
-	group:      admin
-	jwt:        Auth
-	middleware: AdminAuth
-)
-service gobot {
-	@doc "Get admin dashboard stats"
-	@handler GetAdminStats
-	get /admin/stats returns (AdminStatsResponse)
-
-	@doc "List all users (paginated)"
-	@handler AdminListUsers
-	get /admin/users (AdminListUsersRequest) returns (AdminListUsersResponse)
-
-	@doc "List all subscriptions (paginated)"
-	@handler AdminListSubscriptions
-	get /admin/subscriptions (AdminListSubscriptionsRequest) returns (AdminListSubscriptionsResponse)
 }
 
 // =====================================================
@@ -786,5 +593,64 @@ service gobot {
 	@doc "Disconnect OAuth provider"
 	@handler DisconnectOAuth
 	delete /oauth/:provider (DisconnectOAuthRequest) returns (MessageResponse)
+}
+
+// =====================================================
+// AGENT HUB TYPES
+// =====================================================
+type AgentConnectRequest {
+	AgentId string `json:"agentId"`
+}
+
+type AgentConnectResponse {
+	Connected bool   `json:"connected"`
+	AgentId   string `json:"agentId"`
+	OrgId     string `json:"orgId"`
+}
+
+type AgentStatusRequest {
+	AgentId string `path:"agentId"`
+}
+
+type AgentStatusResponse {
+	AgentId   string `json:"agentId"`
+	OrgId     string `json:"orgId"`
+	Connected bool   `json:"connected"`
+	Uptime    int64  `json:"uptime"`
+}
+
+type ListAgentsRequest {
+	OrgId string `path:"orgId,optional"`
+}
+
+type AgentInfo {
+	AgentId   string `json:"agentId"`
+	OrgId     string `json:"orgId"`
+	UserId    string `json:"userId"`
+	Connected bool   `json:"connected"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type ListAgentsResponse {
+	Agents []AgentInfo `json:"agents"`
+	Total  int         `json:"total"`
+}
+
+// =====================================================
+// AGENT HUB SERVICES
+// =====================================================
+@server (
+	prefix: /api/v1
+	group:  agent
+	jwt:    Auth
+)
+service gobot {
+	@doc "List connected agents for organization"
+	@handler ListAgents
+	get /agents (ListAgentsRequest) returns (ListAgentsResponse)
+
+	@doc "Get agent status"
+	@handler GetAgentStatus
+	get /agents/:agentId/status (AgentStatusRequest) returns (AgentStatusResponse)
 }
 

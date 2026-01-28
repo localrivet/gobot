@@ -8,7 +8,6 @@ import (
 	"gobot/internal/svc"
 	"gobot/internal/types"
 
-	levee "github.com/almatuck/levee-go"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -27,23 +26,23 @@ func NewChangePasswordLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Ch
 }
 
 func (l *ChangePasswordLogic) ChangePassword(req *types.ChangePasswordRequest) (resp *types.MessageResponse, err error) {
-	if l.svcCtx.Levee == nil {
-		return nil, fmt.Errorf("levee service not configured")
+	if l.svcCtx.Auth == nil {
+		return nil, fmt.Errorf("auth service not configured")
 	}
 
-	// Get email from JWT context
 	email, err := auth.GetEmailFromContext(l.ctx)
 	if err != nil {
 		l.Errorf("Failed to get email from context: %v", err)
 		return nil, err
 	}
 
-	// Change password via Levee SDK
-	_, err = l.svcCtx.Levee.Auth.ChangePassword(l.ctx, &levee.SDKChangePasswordRequest{
-		Email:           email,
-		CurrentPassword: req.CurrentPassword,
-		NewPassword:     req.NewPassword,
-	})
+	user, err := l.svcCtx.Auth.GetUserByEmail(l.ctx, email)
+	if err != nil {
+		l.Errorf("Failed to get user: %v", err)
+		return nil, err
+	}
+
+	err = l.svcCtx.Auth.ChangePassword(l.ctx, user.ID, req.CurrentPassword, req.NewPassword)
 	if err != nil {
 		l.Errorf("Failed to change password for %s: %v", email, err)
 		return nil, err

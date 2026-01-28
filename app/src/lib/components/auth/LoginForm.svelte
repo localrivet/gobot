@@ -45,6 +45,17 @@
 	const hasOAuth = $derived(googleEnabled || githubEnabled);
 
 	onMount(async () => {
+		// Check if setup is required (no admin exists)
+		try {
+			const status = await api.setupStatus();
+			if (status.setupRequired) {
+				window.location.href = '/setup';
+				return;
+			}
+		} catch {
+			// Setup endpoint not available, continue normally
+		}
+
 		// Fetch auth config to see which OAuth providers are enabled
 		try {
 			const config = await api.getAuthConfig();

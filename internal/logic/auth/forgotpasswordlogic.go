@@ -8,7 +8,6 @@ import (
 	"gobot/internal/svc"
 	"gobot/internal/types"
 
-	levee "github.com/almatuck/levee-go"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -27,59 +26,22 @@ func NewForgotPasswordLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Fo
 }
 
 func (l *ForgotPasswordLogic) ForgotPassword(req *types.ForgotPasswordRequest) (resp *types.MessageResponse, err error) {
-	// Use local auth when Levee is disabled
-	if l.svcCtx.UseLocal() {
-		return l.forgotPasswordLocal(req)
-	}
-
-	// Use Levee when enabled
-	if l.svcCtx.Levee == nil {
+	if l.svcCtx.Auth == nil {
 		return nil, fmt.Errorf("auth service not configured")
 	}
 
-	// Initiate password reset via Levee SDK
-	_, err = l.svcCtx.Levee.Auth.ForgotPassword(l.ctx, &levee.SDKForgotPasswordRequest{
-		Email: req.Email,
-	})
-	if err != nil {
-		l.Errorf("Forgot password failed for %s: %v", req.Email, err)
-		// Don't reveal whether email exists
-		return &types.MessageResponse{
-			Message: "If an account with that email exists, a password reset link has been sent.",
-		}, nil
-	}
-
-	return &types.MessageResponse{
-		Message: "If an account with that email exists, a password reset link has been sent.",
-	}, nil
-}
-
-// forgotPasswordLocal handles forgot password with local SQLite auth
-func (l *ForgotPasswordLogic) forgotPasswordLocal(req *types.ForgotPasswordRequest) (*types.MessageResponse, error) {
-	if l.svcCtx.Auth == nil {
-		return nil, fmt.Errorf("local auth service not configured")
-	}
-
-	// Create password reset token
 	token, err := l.svcCtx.Auth.CreatePasswordResetToken(l.ctx, req.Email)
 	if err != nil {
 		l.Errorf("Failed to create password reset token: %v", err)
-		// Don't reveal error to user
 	}
 
-	// Send email if we got a token and email service is configured
 	if token != "" && l.svcCtx.Email != nil {
 		baseURL := l.svcCtx.Config.App.BaseURL
 		resetURL := fmt.Sprintf("%s/auth/reset-password?token=%s", baseURL, token)
 
-		// Try template email first (Outlet.sh), falls back to SMTP
 		_, emailErr := l.svcCtx.Email.SendEmail(l.ctx, local.SendEmailRequest{
-			To:           req.Email,
-			Subject:      "Reset your password",
-			TemplateSlug: l.svcCtx.Config.Outlet.PasswordResetTemplate,
-			Variables: map[string]string{
-				"reset_link": resetURL,
-			},
+			To:      req.Email,
+			Subject: "Reset your password",
 			Body: fmt.Sprintf(`
 <!DOCTYPE html>
 <html>
@@ -106,7 +68,6 @@ func (l *ForgotPasswordLogic) forgotPasswordLocal(req *types.ForgotPasswordReque
 		}
 	}
 
-	// Always return success to not reveal if email exists
 	return &types.MessageResponse{
 		Message: "If an account with that email exists, a password reset link has been sent.",
 	}, nil

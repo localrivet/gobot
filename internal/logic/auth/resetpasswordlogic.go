@@ -7,7 +7,6 @@ import (
 	"gobot/internal/svc"
 	"gobot/internal/types"
 
-	levee "github.com/almatuck/levee-go"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -26,16 +25,11 @@ func NewResetPasswordLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Res
 }
 
 func (l *ResetPasswordLogic) ResetPassword(req *types.ResetPasswordRequest) (resp *types.MessageResponse, err error) {
-	if l.svcCtx.Levee == nil {
-		return nil, fmt.Errorf("levee service not configured")
+	if l.svcCtx.Auth == nil {
+		return nil, fmt.Errorf("auth service not configured")
 	}
 
-	// Reset password via Levee SDK
-	_, err = l.svcCtx.Levee.Auth.ResetPassword(l.ctx, &levee.SDKResetPasswordRequest{
-		Token:           req.Token,
-		Password:        req.NewPassword,
-		ConfirmPassword: req.NewPassword,
-	})
+	err = l.svcCtx.Auth.ResetPassword(l.ctx, req.Token, req.NewPassword)
 	if err != nil {
 		l.Errorf("Reset password failed: %v", err)
 		return nil, err

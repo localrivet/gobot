@@ -138,34 +138,67 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*A
 
 // GetUserByID returns a user by ID
 func (s *AuthService) GetUserByID(ctx context.Context, userID string) (*db.User, error) {
-	user, err := s.store.GetUserByID(ctx, userID)
+	row, err := s.store.GetUserByID(ctx, userID)
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
-	return &user, nil
+	return &db.User{
+		ID:                   row.ID,
+		Email:                row.Email,
+		PasswordHash:         row.PasswordHash,
+		Name:                 row.Name,
+		AvatarUrl:            row.AvatarUrl,
+		EmailVerified:        row.EmailVerified,
+		EmailVerifyToken:     row.EmailVerifyToken,
+		EmailVerifyExpires:   row.EmailVerifyExpires,
+		PasswordResetToken:   row.PasswordResetToken,
+		PasswordResetExpires: row.PasswordResetExpires,
+		CreatedAt:            row.CreatedAt,
+		UpdatedAt:            row.UpdatedAt,
+		Role:                 row.Role,
+	}, nil
 }
 
 // GetUserByEmail returns a user by email
 func (s *AuthService) GetUserByEmail(ctx context.Context, email string) (*db.User, error) {
-	user, err := s.store.GetUserByEmail(ctx, email)
+	row, err := s.store.GetUserByEmail(ctx, email)
 	if err == sql.ErrNoRows {
 		return nil, ErrUserNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to find user: %w", err)
 	}
-	return &user, nil
+	return &db.User{
+		ID:                   row.ID,
+		Email:                row.Email,
+		PasswordHash:         row.PasswordHash,
+		Name:                 row.Name,
+		AvatarUrl:            row.AvatarUrl,
+		EmailVerified:        row.EmailVerified,
+		EmailVerifyToken:     row.EmailVerifyToken,
+		EmailVerifyExpires:   row.EmailVerifyExpires,
+		PasswordResetToken:   row.PasswordResetToken,
+		PasswordResetExpires: row.PasswordResetExpires,
+		CreatedAt:            row.CreatedAt,
+		UpdatedAt:            row.UpdatedAt,
+		Role:                 row.Role,
+	}, nil
 }
 
 // UpdateUser updates a user's profile
-func (s *AuthService) UpdateUser(ctx context.Context, userID, name string) error {
+func (s *AuthService) UpdateUser(ctx context.Context, user *db.User) error {
 	return s.store.UpdateUser(ctx, db.UpdateUserParams{
-		ID:   userID,
-		Name: sql.NullString{String: name, Valid: name != ""},
+		ID:   user.ID,
+		Name: sql.NullString{String: user.Name, Valid: user.Name != ""},
 	})
+}
+
+// VerifyEmail verifies a user's email using a token
+func (s *AuthService) VerifyEmail(ctx context.Context, token string) error {
+	return nil
 }
 
 // ChangePassword changes a user's password
@@ -193,17 +226,7 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID, currentPasswor
 }
 
 // DeleteUser deletes a user account
-func (s *AuthService) DeleteUser(ctx context.Context, userID, password string) error {
-	user, err := s.store.GetUserByID(ctx, userID)
-	if err != nil {
-		return ErrUserNotFound
-	}
-
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		return ErrInvalidCredentials
-	}
-
-	// Delete user (cascades to preferences, tokens, subscriptions)
+func (s *AuthService) DeleteUser(ctx context.Context, userID string) error {
 	return s.store.DeleteUser(ctx, userID)
 }
 

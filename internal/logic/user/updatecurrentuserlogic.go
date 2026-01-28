@@ -3,12 +3,12 @@ package user
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"gobot/internal/auth"
 	"gobot/internal/svc"
 	"gobot/internal/types"
 
-	levee "github.com/almatuck/levee-go"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -27,39 +27,38 @@ func NewUpdateCurrentUserLogic(ctx context.Context, svcCtx *svc.ServiceContext) 
 }
 
 func (l *UpdateCurrentUserLogic) UpdateCurrentUser(req *types.UpdateUserRequest) (resp *types.GetUserResponse, err error) {
-	if l.svcCtx.Levee == nil {
-		return nil, fmt.Errorf("levee service not configured")
+	if l.svcCtx.Auth == nil {
+		return nil, fmt.Errorf("auth service not configured")
 	}
 
-	// Get email from JWT context
 	email, err := auth.GetEmailFromContext(l.ctx)
 	if err != nil {
 		l.Errorf("Failed to get email from context: %v", err)
 		return nil, err
 	}
 
-	// Get customer ID first
-	customer, err := l.svcCtx.Levee.Customers.GetCustomerByEmail(l.ctx, email)
+	user, err := l.svcCtx.Auth.GetUserByEmail(l.ctx, email)
 	if err != nil {
-		l.Errorf("Failed to get customer %s: %v", email, err)
+		l.Errorf("Failed to get user %s: %v", email, err)
 		return nil, err
 	}
 
-	// Update customer via Levee SDK
-	customerInfo, err := l.svcCtx.Levee.Customers.UpdateCustomer(l.ctx, customer.ID, &levee.SDKUpdateCustomerRequest{
-		Name: req.Name,
-	})
+	if req.Name != "" {
+		user.Name = req.Name
+	}
+
+	err = l.svcCtx.Auth.UpdateUser(l.ctx, user)
 	if err != nil {
-		l.Errorf("Failed to update customer %s: %v", email, err)
+		l.Errorf("Failed to update user %s: %v", email, err)
 		return nil, err
 	}
 
 	return &types.GetUserResponse{
 		User: types.User{
-			Id:        customerInfo.ID,
-			Email:     customerInfo.Email,
-			Name:      customerInfo.Name,
-			CreatedAt: customerInfo.CreatedAt,
+			Id:        user.ID,
+			Email:     user.Email,
+			Name:      user.Name,
+			CreatedAt: time.Unix(user.CreatedAt, 0).Format("2006-01-02T15:04:05Z07:00"),
 		},
 	}, nil
 }

@@ -1,95 +1,20 @@
 Name: gobot
 Host: 0.0.0.0
-Port: 8888
+Port: 27895
 
-# App Configuration
 App:
   BaseURL: ${APP_BASE_URL}
   Domain: ${APP_DOMAIN}
   ProductionMode: "${PRODUCTION_MODE}"
 
-# Backoffice Admin (for viewing SaaS stats)
-Admin:
-  Username: "${ADMIN_USERNAME}"
-  Password: "${ADMIN_PASSWORD}"
-
-# Authentication configuration
 Auth:
   AccessSecret: ${ACCESS_SECRET}
-  AccessExpire: 2592000 # 30 days in seconds
-  RefreshTokenExpire: 2592000 # 30 days in seconds
+  AccessExpire: 2592000
+  RefreshTokenExpire: 2592000
 
-# Database configuration (used when Levee is disabled)
 Database:
   SQLitePath: ${SQLITE_PATH}
 
-# Stripe configuration (used when Levee is disabled)
-# See docs/stripe.md for setup instructions
-Stripe:
-  SecretKey: ${STRIPE_SECRET_KEY}
-  PublishableKey: ${STRIPE_PUBLISHABLE_KEY}
-  WebhookSecret: ${STRIPE_WEBHOOK_SECRET}
-  SuccessURL: "/app/account"
-  CancelURL: "/pricing"
-
-# Products configuration (standalone mode only - synced to Stripe on startup)
-# Each product can have multiple prices (monthly, yearly, one-time)
-# See docs/stripe.md for detailed configuration guide
-Products:
-  - slug: "free"
-    name: "Free"
-    description: "Get started for free"
-    default: true
-    features:
-      - "5 projects"
-      - "Basic analytics"
-      - "Community support"
-    prices:
-      - slug: "default"
-        amount: 0
-        currency: "usd"
-        interval: "month"
-
-  - slug: "pro"
-    name: "Pro"
-    description: "For professionals and growing teams"
-    features:
-      - "Unlimited projects"
-      - "Advanced analytics"
-      - "Priority support"
-      - "API access"
-    prices:
-      - slug: "monthly"
-        amount: 2900 # $29.00
-        currency: "usd"
-        interval: "month"
-        trialDays: 14
-      - slug: "yearly"
-        amount: 29000 # $290.00 (save ~17%)
-        currency: "usd"
-        interval: "year"
-        trialDays: 14
-
-  - slug: "team"
-    name: "Team"
-    description: "For teams that need collaboration"
-    features:
-      - "Everything in Pro"
-      - "Team collaboration"
-      - "Admin dashboard"
-      - "SAML SSO"
-      - "Dedicated support"
-    prices:
-      - slug: "monthly"
-        amount: 7900 # $79.00
-        currency: "usd"
-        interval: "month"
-      - slug: "yearly"
-        amount: 79000 # $790.00 (save ~17%)
-        currency: "usd"
-        interval: "year"
-
-# Security configuration
 Security:
   EnableSecurityHeaders: "true"
   ForceHTTPS: "false"
@@ -101,7 +26,6 @@ Security:
   AuthRateLimitInterval: 60
   AllowedOrigins: ${ALLOWED_ORIGINS}
 
-# Email Configuration (SMTP - works with any email provider)
 Email:
   SMTPHost: ${SMTP_HOST}
   SMTPPort: ${SMTP_PORT}
@@ -111,46 +35,6 @@ Email:
   FromName: ${EMAIL_FROM_NAME}
   ReplyTo: ${EMAIL_REPLY_TO}
 
-# Outlet.sh Email Service (optional - adds lists, sequences, templates)
-Outlet:
-  BaseURL: ${OUTLET_BASE_URL}
-  APIKey: ${OUTLET_API_KEY}
-  WaitlistListSlug: "waitlist"
-  NewsletterListSlug: "newsletter"
-  UsersListSlug: "users"
-  OnboardingSequence: "onboarding"
-  TrialConversionSequence: "trial-conversion"
-  EmailVerificationTemplate: "email-verification"
-  PasswordResetTemplate: "password-reset"
-  WelcomeTemplate: "welcome"
-
-# Levee configuration (auth, billing, email, LLM)
-Levee:
-  APIKey: ${LEVEE_API_KEY}
-  BaseURL: ${LEVEE_BASE_URL}
-  GRPCAddress: ${LEVEE_GRPC_ADDRESS}
-  Enabled: "true"
-  CheckoutSuccessURL: "/app/account"
-  CheckoutCancelURL: "/pricing"
-  NewsletterListSlug: "newsletter-subscribers"
-  UsersListSlug: "users"
-  OnboardingSequence: "onboarding-sequence"
-  TrialConversionSequence: "free-to-pro-upgrade"
-  FreeProductSlug: "free"
-  ProMonthlyProductSlug: "pro"
-  ProYearlyProductSlug: "pro-yearly"
-  TeamMonthlyProductSlug: "team"
-  TeamYearlyProductSlug: "team-yearly"
-  EmailVerificationTemplate: "email-verification"
-  PasswordResetTemplate: "password-reset"
-  PasswordChangedTemplate: "password-changed"
-  AccountDeletedTemplate: "account-deleted"
-  SubscriptionWelcomeTemplate: "subscription-welcome"
-  SubscriptionCancelledTemplate: "subscription-cancelled"
-  PaymentFailedTemplate: "payment-failed"
-  TrialEndingTemplate: "trial-ending"
-
-# OAuth / Social Login
 OAuth:
   GoogleEnabled: "${GOOGLE_OAUTH_ENABLED}"
   GoogleClientID: ${GOOGLE_CLIENT_ID}
@@ -160,7 +44,6 @@ OAuth:
   GitHubClientSecret: ${GITHUB_CLIENT_SECRET}
   CallbackBaseURL: ${APP_BASE_URL}
 
-# Feature Toggles
 Features:
   OrganizationsEnabled: "${ORGANIZATIONS_ENABLED}"
   NotificationsEnabled: "${NOTIFICATIONS_ENABLED}"

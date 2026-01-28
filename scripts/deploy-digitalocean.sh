@@ -70,16 +70,11 @@ PRODUCTION_MODE=true
 APP_DOMAIN=your-domain.com
 ADMIN_EMAIL=admin@your-domain.com
 ACCESS_SECRET=your-32-char-secret-here-change-me
+SQLITE_PATH=/app/data/gobot.db
 
-# Postgres
-POSTGRES_DB=gobot
-POSTGRES_USER=saas_starter_user
-POSTGRES_PASSWORD=change-this-password
-
-# Levee (get from dashboard.levee.sh)
-LEVEE_ENABLED=true
-LEVEE_API_KEY=your-levee-api-key
-LEVEE_BASE_URL=https://api.levee.sh
+# Admin
+ADMIN_USERNAME=admin@your-domain.com
+ADMIN_PASSWORD=change-this-password
 EOF
 
 echo "Server setup complete!"

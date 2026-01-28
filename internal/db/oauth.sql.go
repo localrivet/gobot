@@ -63,7 +63,7 @@ func (q *Queries) CreateOAuthConnection(ctx context.Context, arg CreateOAuthConn
 const createUserFromOAuth = `-- name: CreateUserFromOAuth :one
 INSERT INTO users (id, email, password_hash, name, avatar_url, email_verified, created_at, updated_at)
 VALUES (?1, ?2, '', ?3, ?4, 1, strftime('%s', 'now'), strftime('%s', 'now'))
-RETURNING id, email, password_hash, name, avatar_url, email_verified, email_verify_token, email_verify_expires, password_reset_token, password_reset_expires, created_at, updated_at
+RETURNING id, email, password_hash, name, avatar_url, email_verified, email_verify_token, email_verify_expires, password_reset_token, password_reset_expires, created_at, updated_at, role
 `
 
 type CreateUserFromOAuthParams struct {
@@ -94,6 +94,7 @@ func (q *Queries) CreateUserFromOAuth(ctx context.Context, arg CreateUserFromOAu
 		&i.PasswordResetExpires,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }

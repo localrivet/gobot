@@ -1,399 +1,404 @@
-# Gobot
+# GoBot
 
-Ship your SaaS in days, not months. A production-ready full-stack boilerplate with Go-Zero backend and SvelteKit frontend.
+An open-source AI agent platform with computer control capabilities. Features a powerful CLI agent, extensible plugin system, and multi-channel integrations.
 
 ## Features
 
-- **Single Binary Deployment** - Go backend with embedded static frontend
-- **Two Modes** - Standalone (SQLite + Stripe) or Levee-powered (managed platform)
-- **Authentication** - JWT auth with refresh tokens, email verification, password reset
-- **Billing** - Stripe integration with subscriptions, trials, and billing portal
-- **Email** - SMTP support for transactional emails (password reset, welcome, etc.)
-- **Modern Frontend** - SvelteKit 2 + Svelte 5 + Tailwind v4
-- **Type-Safe API** - Auto-generated TypeScript client from Go API definitions
-- **Production Ready** - Rate limiting, CORS, security headers, health checks
+- **Autonomous AI Agent** - Agentic loop with tool use, self-correction, and provider failover
+- **Computer Control** - Browser automation, screenshots, file operations, shell commands
+- **Extensible** - Hot-loadable skills (YAML) and plugins (compiled binaries)
+- **Multi-Channel** - Telegram, Discord, Slack integrations
+- **Multi-Provider** - Anthropic, OpenAI, Gemini (CLI or API)
+- **Persistent Sessions** - SQLite-backed conversation history with compaction
+- **MCP Server** - Expose tools to other AI assistants
 
 ## Quick Start
 
-### Recommended: Use Claude Code
-
-We recommend [Claude Code](https://claude.ai/code) for the best development experience. After cloning, run `/init` to set up your project interactively.
-
 ```bash
-# Clone the repository
-git clone https://github.com/almatuck/gobot.git myapp
-cd myapp
+# Build the CLI agent
+make build-cli
 
-# Open in Claude Code, then run:
-/init
+# Configure (creates ~/.gobot/config.yaml)
+./bin/gobot-cli config init
+
+# Set your API key
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Start chatting
+./bin/gobot-cli chat "Hello, what can you do?"
+
+# Interactive mode
+./bin/gobot-cli chat --interactive
 ```
 
-### Alternative: One-Line Install
+## Architecture
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/almatuck/gobot/main/install.sh | bash -s -- myapp
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              GoBot CLI Agent                                    │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  AI Providers          │  Tool Registry                 │   │
+│  │  - Anthropic API       │  - bash, read, write, edit     │   │
+│  │  - OpenAI API          │  - glob, grep, web             │   │
+│  │  - Claude CLI          │  - browser, screenshot         │   │
+│  │  - Gemini CLI (free!)  │  - vision, memory, cron        │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  Skills (YAML)         │  Plugins (Binaries)            │   │
+│  │  - code-review         │  - Custom tools                │   │
+│  │  - git-workflow        │  - Channel adapters            │   │
+│  │  - security-audit      │  - Hot-loadable                │   │
+│  │  - debugging           │                                │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  SQLite Sessions       │  Config (~/.gobot/)            │   │
+│  │  - Conversation history│  - Provider settings           │   │
+│  │  - Auto-compaction     │  - Tool policies               │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-This will:
-- Clone the repository
-- Rename everything to `myapp`
-- Prompt for admin email and password
-- Auto-generate secure JWT secret
-- Install all dependencies
-- Create `.env` with working defaults
+## Configuration
 
-Then visit **http://localhost:YOUR_PORT** (shown after install)
+Configuration lives at `~/.gobot/config.yaml`:
 
-### Already Cloned?
+```yaml
+# AI Providers (supports multiple for failover)
+providers:
+  # API Providers
+  - name: anthropic-api
+    type: api
+    api_key: ${ANTHROPIC_API_KEY}
+    model: claude-sonnet-4-20250514
 
-```bash
-./install.sh myapp    # Rename and configure
-make dev              # Start everything
+  - name: openai-api
+    type: api
+    api_key: ${OPENAI_API_KEY}
+    model: gpt-4o
+
+  # CLI Providers (wrap official CLI tools)
+  - name: gemini-cli          # FREE: 1000 requests/day!
+    type: cli
+    command: gemini
+
+# Session settings
+max_context: 50               # Messages before auto-compaction
+max_iterations: 100           # Safety limit per run
+
+# Tool approval policy
+policy:
+  level: allowlist            # deny, allowlist, or full
+  ask_mode: on-miss           # off, on-miss, or always
+  allowlist:
+    - "ls *"
+    - "cat *"
+    - "git *"
 ```
 
-### Manual Start
+## Built-in Tools
+
+| Tool | Description | Requires Approval |
+|------|-------------|-------------------|
+| `bash` | Execute shell commands | Yes (configurable) |
+| `read` | Read file contents | No |
+| `write` | Create/overwrite files | Yes |
+| `edit` | Find-and-replace edits | Yes |
+| `glob` | Find files by pattern | No |
+| `grep` | Search file contents | No |
+| `web` | Fetch URLs | No |
+| `browser` | CDP browser automation | Yes |
+| `screenshot` | Capture screen/window | No |
+| `vision` | Analyze images with AI | No |
+| `memory` | Persistent fact storage | No |
+| `cron` | Schedule recurring tasks | Yes |
+
+---
+
+# Skills System
+
+Skills are **declarative YAML definitions** that enhance agent behavior without code changes. Drop a file and it's immediately active.
+
+## How Skills Work
+
+```
+User: "Review my authentication code"
+         │
+         ▼
+┌─────────────────────────────────────┐
+│ Skill Matcher                       │
+│ Triggers: ["review", "code review"] │
+│ Result: MATCH → code-review skill   │
+└─────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────┐
+│ Enhanced System Prompt              │
+│ + Skill template                    │
+│ + Few-shot examples                 │
+│ = More focused, expert response     │
+└─────────────────────────────────────┘
+```
+
+## Creating Skills
+
+Place YAML files in `~/.gobot/skills/` or `extensions/skills/`:
+
+```yaml
+# extensions/skills/security-audit.yaml
+name: security-audit
+description: Security-focused code analysis
+version: "1.0.0"
+priority: 20
+
+triggers:
+  - security
+  - audit
+  - vulnerability
+  - owasp
+
+tools:
+  - read
+  - grep
+  - glob
+
+template: |
+  When performing a security audit:
+
+  1. Check for OWASP Top 10 vulnerabilities:
+     - Injection (SQL, command, LDAP)
+     - Broken authentication
+     - Sensitive data exposure
+     - XXE, XSS, insecure deserialization
+     - Security misconfiguration
+     - Broken access control
+
+  2. Look for:
+     - Hardcoded secrets/credentials
+     - Unvalidated user input
+     - Missing authentication/authorization
+     - Insecure cryptography
+     - Logging sensitive data
+
+  3. Report format:
+     - CRITICAL: Exploitable now
+     - HIGH: Serious but needs conditions
+     - MEDIUM: Should fix
+     - LOW: Best practice improvement
+
+examples:
+  - user: "Check this code for security issues"
+    assistant: |
+      I'll perform a security audit focusing on OWASP Top 10.
+
+      **CRITICAL:**
+      - `auth.go:45` - SQL injection via string concatenation
+        Fix: Use parameterized queries
+
+      **HIGH:**
+      - `config.go:12` - API key hardcoded
+        Fix: Use environment variables
+```
+
+## Managing Skills
 
 ```bash
-make air              # Backend with hot reload (port 8888)
-cd app && pnpm dev    # Frontend dev server (port 5173)
+gobot skills list                           # List all skills
+gobot skills show security-audit            # Show skill details
+gobot skills test security-audit "audit this code"  # Test matching
+```
+
+## Bundled Skills
+
+| Skill | Triggers | Purpose |
+|-------|----------|---------|
+| `code-review` | review, critique | Structured code reviews |
+| `git-workflow` | commit, git, pr | Git operations help |
+| `security-audit` | security, audit | OWASP-focused analysis |
+| `api-design` | api, endpoint | RESTful API best practices |
+| `database-expert` | sql, database | Query optimization |
+| `debugging` | debug, error, fix | Systematic debugging |
+
+---
+
+# Plugin System
+
+Plugins are **compiled binaries** that extend GoBot with new tools. They run as separate processes via RPC.
+
+## Plugin Directory
+
+```
+~/.gobot/plugins/
+├── tools/              # Tool plugins
+│   ├── weather         # Binary
+│   └── database        # Binary
+└── channels/           # Channel plugins
+    └── custom-chat     # Binary
+```
+
+## Creating a Tool Plugin
+
+```go
+// main.go
+package main
+
+import (
+    "context"
+    "encoding/json"
+    "github.com/hashicorp/go-plugin"
+)
+
+var Handshake = plugin.HandshakeConfig{
+    ProtocolVersion:  1,
+    MagicCookieKey:   "GOBOT_PLUGIN",
+    MagicCookieValue: "gobot-plugin-v1",
+}
+
+type MyTool struct{}
+
+func (t *MyTool) Name() string { return "my-tool" }
+func (t *MyTool) Description() string { return "Does something useful" }
+func (t *MyTool) Schema() json.RawMessage {
+    return json.RawMessage(`{"type":"object","properties":{}}`)
+}
+func (t *MyTool) Execute(ctx context.Context, input json.RawMessage) (*ToolResult, error) {
+    return &ToolResult{Content: "Done!", IsError: false}, nil
+}
+func (t *MyTool) RequiresApproval() bool { return false }
+
+// ... RPC boilerplate (see extensions/tools/example/)
+```
+
+Build and install:
+```bash
+go build -o ~/.gobot/plugins/tools/my-tool
+```
+
+---
+
+# CLI Reference
+
+```
+gobot [command]
+
+Commands:
+  chat          Chat with the AI assistant
+    -i, --interactive    Interactive mode
+    -s, --session        Session key (default: "default")
+    -p, --provider       Provider to use
+    -v, --verbose        Show tool calls
+
+  agent         Connect to SaaS as remote agent
+    --org               Organization ID
+    --server            Server URL
+    --token             JWT token
+
+  mcp           Start MCP server
+    --host              Listen host (default: localhost)
+    --port              Listen port (default: 8080)
+
+  config        Configuration management
+    init                Create default config
+
+  session       Session management
+    list                List sessions
+    clear [key]         Clear history
+
+  skills        Skill management
+    list                List skills
+    show [name]         Show details
+    test [name] [input] Test matching
+
+  plugins       Plugin management
+    list                List plugins
+
+Global Flags:
+  --config      Config file path
+  -h, --help    Help
+```
+
+---
+
+# Development
+
+```bash
+# Build
+make build              # Build SaaS server
+make build-cli          # Build CLI agent
+
+# Test
+go test ./...           # Run all tests
+
+# Development
+make air                # Backend with hot reload
+cd app && pnpm dev      # Frontend dev server
 ```
 
 ## Project Structure
 
 ```
-myapp/
-├── myapp.api                  # API definition (routes, types)
-├── myapp.go                   # Entry point
-├── etc/
-│   └── gobot.yaml            # Backend config + Products/Pricing
-├── internal/
-│   ├── handler/               # Auto-generated handlers (DO NOT EDIT)
-│   ├── types/                 # Auto-generated types (DO NOT EDIT)
-│   ├── logic/                 # Business logic (EDIT HERE)
-│   │   ├── auth/              # Login, register, password reset
-│   │   ├── user/              # Profile, preferences, account
-│   │   └── subscription/      # Billing, checkout, usage
-│   ├── svc/                   # Service context
-│   ├── db/                    # SQLite setup (standalone mode)
-│   ├── local/                 # Local auth & billing (standalone mode)
-│   └── middleware/            # CORS, JWT, rate limiting
-├── app/                       # SvelteKit frontend
-│   ├── src/
-│   │   ├── routes/            # Pages and API routes
-│   │   │   ├── (www)/         # Marketing pages
-│   │   │   ├── (auth)/        # Auth pages (login, register)
-│   │   │   └── (app)/         # Authenticated app pages
-│   │   └── lib/
-│   │       ├── config/
-│   │       │   └── site.ts    # Branding/SEO config
-│   │       ├── api/           # Auto-generated API client
-│   │       ├── stores/        # Svelte stores
-│   │       └── components/    # UI components
-│   └── static/                # Static assets
-└── docs/                      # Documentation
+gobot/
+├── agent/                    # CLI Agent
+│   ├── ai/                   # AI providers
+│   ├── config/               # Configuration
+│   ├── tools/                # Built-in tools
+│   ├── runner/               # Agentic loop
+│   ├── session/              # SQLite persistence
+│   ├── skills/               # Skill loader
+│   ├── plugins/              # Plugin loader
+│   └── mcp/                  # MCP server
+├── cmd/gobot-cli/            # CLI entry point
+├── internal/                 # SaaS backend
+│   ├── agenthub/             # Agent WebSocket hub
+│   ├── channels/             # Telegram/Discord/Slack
+│   ├── router/               # Message routing
+│   └── ...
+├── extensions/               # Bundled extensions
+│   ├── skills/               # YAML skills
+│   └── plugins/              # Example plugins
+└── app/                      # SvelteKit frontend
 ```
-
-## Configuration
-
-Gobot uses a simple 3-file configuration system:
-
-| File | Purpose | When to Edit |
-|------|---------|--------------|
-| `app/src/lib/config/site.ts` | Frontend branding, SEO, social links | Rebrand your product |
-| `etc/gobot.yaml` | Backend config + products/pricing | Add features, change pricing |
-| `.env` | Secrets (API keys, JWT secret) | Per-environment setup |
-
-### 1. Branding & SEO (site.ts)
-
-Edit `app/src/lib/config/site.ts` to customize your brand:
-
-```typescript
-export const site = {
-  name: 'YourApp',
-  tagline: 'Your tagline here',
-  description: 'Your meta description for SEO',
-  url: 'https://yourapp.com',
-  supportEmail: 'support@yourapp.com',
-  ogImage: '/images/og-default.png',
-  twitter: '@yourhandle',
-  social: {
-    twitter: 'https://twitter.com/yourapp',
-    github: 'https://github.com/yourapp',
-    linkedin: '',
-    discord: ''
-  },
-  legal: {
-    companyName: 'Your Company, Inc.',
-    companyAddress: '123 Main St, City, State 12345',
-    privacyUrl: '/privacy',
-    termsUrl: '/terms'
-  }
-}
-```
-
-### 2. Products & Pricing (gobot.yaml)
-
-Edit `etc/gobot.yaml` to configure your pricing plans:
-
-```yaml
-Products:
-  - slug: "free"
-    name: "Free"
-    description: "Get started for free"
-    default: true
-    features:
-      - "5 projects"
-      - "Basic analytics"
-      - "Community support"
-    prices:
-      - slug: "default"
-        amount: 0
-        currency: "usd"
-        interval: "month"
-
-  - slug: "pro"
-    name: "Pro"
-    description: "For professionals and growing teams"
-    features:
-      - "Unlimited projects"
-      - "Advanced analytics"
-      - "Priority support"
-      - "API access"
-    prices:
-      - slug: "monthly"
-        amount: 2900  # $29.00 in cents
-        currency: "usd"
-        interval: "month"
-        trialDays: 14
-      - slug: "yearly"
-        amount: 29000  # $290.00 (save ~17%)
-        currency: "usd"
-        interval: "year"
-        trialDays: 14
-```
-
-**Note:** Pricing is automatically embedded into the static frontend at build time - no API call required.
-
-### 3. Environment Variables (.env)
-
-Choose ONE mode. The installer creates a working `.env` for Standalone Mode by default.
-
-**Standalone Mode** (default - no external services):
-
-```bash
-ACCESS_SECRET=your-jwt-secret-here    # Auto-generated by installer
-APP_BASE_URL=http://localhost:5173
-LEVEE_ENABLED=false
-SQLITE_PATH=./data/gobot.db
-
-# Stripe
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_PUBLISHABLE_KEY=pk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-
-# Email (optional - for password reset, welcome emails)
-SMTP_HOST=smtp.gmail.com              # Or SendGrid, Mailgun, SES, etc.
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-EMAIL_FROM_ADDRESS=noreply@yourapp.com
-EMAIL_FROM_NAME=YourApp
-```
-
-**Levee Mode** (managed platform features):
-
-```bash
-ACCESS_SECRET=your-jwt-secret-here    # Auto-generated by installer
-APP_BASE_URL=http://localhost:5173
-LEVEE_ENABLED=true
-LEVEE_API_KEY=lvk_xxx                 # Get from https://dashboard.levee.sh
-LEVEE_BASE_URL=https://api.levee.sh
-```
-
-## Two Modes of Operation
-
-### Standalone Mode (Default)
-
-Zero external dependencies. Everything runs locally:
-
-- **Database**: SQLite with WAL mode
-- **Auth**: Local JWT auth with bcrypt passwords
-- **Billing**: Direct Stripe integration
-- **Products**: Synced to Stripe on startup from `gobot.yaml`
-
-```bash
-LEVEE_ENABLED=false  # or just don't set it
-```
-
-### Levee Mode
-
-Full platform features via [Levee](https://levee.sh):
-
-- **Auth**: Managed authentication with email verification
-- **Billing**: Stripe subscriptions, trials, usage tracking
-- **Email**: Transactional emails, lists, sequences
-- **LLM**: Cost-tracked AI gateway
-
-```bash
-LEVEE_ENABLED=true
-LEVEE_API_KEY=lvk_xxx
-```
-
-## Development Commands
-
-```bash
-# Backend
-make air              # Hot reload development
-make build            # Build binary
-make test             # Run tests
-make gen              # Regenerate handlers from .api file (NEVER run goctl directly)
-
-# Frontend
-cd app
-pnpm dev              # Dev server (port 5173)
-pnpm build            # Production build
-pnpm check            # Type checking
-```
-
-## Adding API Endpoints
-
-1. **Define the endpoint** in `gobot.api`:
-
-```api
-@server(
-    prefix: /api/v1
-    middleware: JwtAuth
-)
-service gobot {
-    @handler GetWidget
-    get /widgets/:id (GetWidgetRequest) returns (GetWidgetResponse)
-}
-
-type GetWidgetRequest {
-    Id string `path:"id"`
-}
-
-type GetWidgetResponse {
-    Id   string `json:"id"`
-    Name string `json:"name"`
-}
-```
-
-2. **Generate handlers**: `make gen`
-
-3. **Implement logic** in `internal/logic/getwidgetlogic.go`:
-
-```go
-func (l *GetWidgetLogic) GetWidget(req *types.GetWidgetRequest) (*types.GetWidgetResponse, error) {
-    return &types.GetWidgetResponse{
-        Id:   req.Id,
-        Name: "My Widget",
-    }, nil
-}
-```
-
-4. **Use in frontend** (TypeScript client auto-generated):
-
-```typescript
-import { getWidget } from '$lib/api';
-const widget = await getWidget({ id: '123' });
-```
-
-## Deployment
-
-### Single Binary with Auto-SSL
-
-Gobot deploys as a single binary - **no nginx, Apache, or reverse proxy needed**:
-
-```bash
-make build
-cd app && pnpm build
-# Deploy ./bin/gobot + .env anywhere
-./bin/gobot
-```
-
-In production mode, the binary automatically:
-- Obtains Let's Encrypt SSL certificates
-- Serves HTTPS on port 443
-- Redirects HTTP (port 80) to HTTPS
-- Redirects www to non-www
-- Enables HTTP/2 and gzip compression
-
-```bash
-# Production .env
-PRODUCTION_MODE=true
-APP_DOMAIN=myapp.com
-APP_ADMIN_EMAIL=admin@myapp.com
-```
-
-### Docker
-
-```bash
-docker build -t myapp .
-docker run -p 80:80 -p 443:443 --env-file .env myapp
-```
-
-### Production (Docker Compose)
-
-```bash
-docker compose --profile production up -d --build
-```
-
-See [Deployment Guide](./docs/DEPLOYMENT.md) for platform-specific instructions (Fly.io, Railway, DigitalOcean, AWS).
-
-## API Endpoints
-
-### Auth (Public)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/v1/auth/register` | Register new user |
-| POST | `/api/v1/auth/login` | User login |
-| POST | `/api/v1/auth/refresh` | Refresh token |
-| POST | `/api/v1/auth/forgot-password` | Request password reset |
-| POST | `/api/v1/auth/reset-password` | Reset password |
-| POST | `/api/v1/auth/verify-email` | Verify email |
-
-### User (Authenticated)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/user/me` | Get current user |
-| PUT | `/api/v1/user/me` | Update profile |
-| DELETE | `/api/v1/user/me` | Delete account |
-| POST | `/api/v1/user/me/change-password` | Change password |
-| GET | `/api/v1/user/me/preferences` | Get preferences |
-| PUT | `/api/v1/user/me/preferences` | Update preferences |
-
-### Subscription (Authenticated)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/v1/subscription` | Get current subscription |
-| GET | `/api/v1/subscription/plans` | List available plans |
-| POST | `/api/v1/subscription/checkout` | Create checkout session |
-| POST | `/api/v1/subscription/billing-portal` | Open billing portal |
-| POST | `/api/v1/subscription/cancel` | Cancel subscription |
-
-## Documentation
-
-- [Quick Start Guide](./docs/QUICK_START.md) - Get running in under an hour
-- [Configuration Guide](./docs/CONFIGURATION.md) - All settings explained
-- [Deployment Guide](./docs/DEPLOYMENT.md) - Production deployment with auto-SSL
-- [Stripe Integration](./docs/STRIPE.md) - Standalone mode billing setup
-- [Levee Integration](./docs/LEVEE_INTEGRATION.md) - Managed platform features
-- [Customization](./docs/CUSTOMIZATION.md) - Theming, branding, components
-- [Research Runner](./docs/RESEARCH.md) - Validate your SaaS idea (bonus tool)
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
-| Backend | Go 1.25+, go-zero framework |
-| Frontend | SvelteKit 2, Svelte 5, Tailwind v4 |
-| Database | SQLite (standalone) or Levee (managed) |
-| Payments | Stripe |
-| Build | Single binary with embedded static frontend |
+| Agent | Go 1.25+, Cobra CLI |
+| Backend | go-zero framework |
+| Frontend | SvelteKit 2, Svelte 5 |
+| Database | SQLite (modernc.org/sqlite) |
+| Browser | chromedp (CDP) |
+| Plugins | hashicorp/go-plugin |
+
+---
+
+# Agent Mode (SaaS)
+
+Connect the CLI agent to a GoBot server for remote task execution:
+
+```bash
+gobot agent --org acme --server https://gobot.example.com --token <jwt>
+```
+
+This enables:
+- Remote tasks from web dashboard
+- Channel integrations (Telegram → Agent → Response)
+- Multi-agent coordination
+- Centralized history
+
+---
+
+# MCP Server
+
+Expose GoBot's tools to other AI assistants:
+
+```bash
+gobot mcp --port 8080
+```
+
+Claude Desktop and other MCP clients can then use GoBot's tools.
 
 ## License
 

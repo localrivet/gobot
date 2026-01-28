@@ -157,6 +157,7 @@ type User struct {
 	PasswordResetExpires sql.NullInt64  `json:"password_reset_expires"`
 	CreatedAt            int64          `json:"created_at"`
 	UpdatedAt            int64          `json:"updated_at"`
+	Role                 string         `json:"role"`
 }
 
 type UserPreference struct {

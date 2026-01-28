@@ -18,12 +18,6 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL}
       - ACCESS_SECRET=${ACCESS_SECRET}
       - SQLITE_PATH=/app/data/gobot.db
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
-      - LEVEE_ENABLED=${LEVEE_ENABLED:-false}
-      - LEVEE_API_KEY=${LEVEE_API_KEY}
-      - LEVEE_BASE_URL=${LEVEE_BASE_URL}
     volumes:
       - app_data:/app/data
       - ./certs:/app/certs

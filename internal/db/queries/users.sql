@@ -1,7 +1,7 @@
 -- name: GetUserByID :one
 SELECT id, email, password_hash, name, avatar_url, email_verified,
        email_verify_token, email_verify_expires, password_reset_token,
-       password_reset_expires, created_at, updated_at
+       password_reset_expires, role, created_at, updated_at
 FROM users
 WHERE id = sqlc.arg(id)
 LIMIT 1;
@@ -9,7 +9,7 @@ LIMIT 1;
 -- name: GetUserByEmail :one
 SELECT id, email, password_hash, name, avatar_url, email_verified,
        email_verify_token, email_verify_expires, password_reset_token,
-       password_reset_expires, created_at, updated_at
+       password_reset_expires, role, created_at, updated_at
 FROM users
 WHERE LOWER(email) = LOWER(sqlc.arg(email))
 LIMIT 1;
@@ -23,7 +23,7 @@ INSERT INTO users (
 )
 RETURNING id, email, password_hash, name, avatar_url, email_verified,
           email_verify_token, email_verify_expires, password_reset_token,
-          password_reset_expires, created_at, updated_at;
+          password_reset_expires, role, created_at, updated_at;
 
 -- name: UpdateUser :exec
 UPDATE users
@@ -61,7 +61,7 @@ WHERE id = sqlc.arg(id);
 -- name: GetUserByEmailVerifyToken :one
 SELECT id, email, password_hash, name, avatar_url, email_verified,
        email_verify_token, email_verify_expires, password_reset_token,
-       password_reset_expires, created_at, updated_at
+       password_reset_expires, role, created_at, updated_at
 FROM users
 WHERE email_verify_token = sqlc.arg(token)
   AND email_verify_expires > strftime('%s', 'now')
@@ -77,7 +77,7 @@ WHERE id = sqlc.arg(id);
 -- name: GetUserByPasswordResetToken :one
 SELECT id, email, password_hash, name, avatar_url, email_verified,
        email_verify_token, email_verify_expires, password_reset_token,
-       password_reset_expires, created_at, updated_at
+       password_reset_expires, role, created_at, updated_at
 FROM users
 WHERE password_reset_token = sqlc.arg(token)
   AND password_reset_expires > strftime('%s', 'now')
@@ -96,8 +96,34 @@ SELECT COUNT(*) as total FROM users;
 SELECT COUNT(*) as total FROM users WHERE created_at >= sqlc.arg(after);
 
 -- name: ListUsersPaginated :many
-SELECT id, email, name, avatar_url, email_verified, created_at, updated_at
+SELECT id, email, name, avatar_url, email_verified, role, created_at, updated_at
 FROM users
 WHERE (sqlc.arg(search) = '' OR LOWER(email) LIKE '%' || LOWER(sqlc.arg(search)) || '%' OR LOWER(name) LIKE '%' || LOWER(sqlc.arg(search)) || '%')
 ORDER BY created_at DESC
 LIMIT sqlc.arg(page_size) OFFSET sqlc.arg(page_offset);
+
+-- Role queries
+
+-- name: HasAdminUser :one
+SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END as found
+FROM users WHERE role = 'admin';
+
+-- name: CreateUserWithRole :one
+INSERT INTO users (
+    id, email, password_hash, name, role, created_at, updated_at
+) VALUES (
+    sqlc.arg(id), sqlc.arg(email), sqlc.arg(password_hash), sqlc.arg(name), sqlc.arg(role),
+    strftime('%s', 'now'), strftime('%s', 'now')
+)
+RETURNING id, email, password_hash, name, avatar_url, email_verified,
+          email_verify_token, email_verify_expires, password_reset_token,
+          password_reset_expires, role, created_at, updated_at;
+
+-- name: GetUserRole :one
+SELECT role FROM users WHERE id = sqlc.arg(id);
+
+-- name: UpdateUserRole :exec
+UPDATE users
+SET role = sqlc.arg(role),
+    updated_at = strftime('%s', 'now')
+WHERE id = sqlc.arg(id);

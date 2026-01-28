@@ -48,9 +48,10 @@ type Querier interface {
 	CreateOrganizationInvite(ctx context.Context, arg CreateOrganizationInviteParams) (OrganizationInvite, error)
 	CreateRefreshToken(ctx context.Context, arg CreateRefreshTokenParams) (RefreshToken, error)
 	CreateSubscription(ctx context.Context, arg CreateSubscriptionParams) (Subscription, error)
-	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error)
 	CreateUserFromOAuth(ctx context.Context, arg CreateUserFromOAuthParams) (User, error)
 	CreateUserPreferences(ctx context.Context, userID string) (CreateUserPreferencesRow, error)
+	CreateUserWithRole(ctx context.Context, arg CreateUserWithRoleParams) (CreateUserWithRoleRow, error)
 	DeleteExpiredInvites(ctx context.Context) error
 	DeleteExpiredRefreshTokens(ctx context.Context) error
 	DeleteInvite(ctx context.Context, id string) error
@@ -93,11 +94,14 @@ type Querier interface {
 	GetSubscriptionByStripeCustomerID(ctx context.Context, stripeCustomerID sql.NullString) (Subscription, error)
 	GetSubscriptionByStripeSubID(ctx context.Context, stripeSubscriptionID sql.NullString) (Subscription, error)
 	GetSubscriptionByUserID(ctx context.Context, userID string) (Subscription, error)
-	GetUserByEmail(ctx context.Context, email string) (User, error)
-	GetUserByEmailVerifyToken(ctx context.Context, token sql.NullString) (User, error)
-	GetUserByID(ctx context.Context, id string) (User, error)
-	GetUserByPasswordResetToken(ctx context.Context, token sql.NullString) (User, error)
+	GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error)
+	GetUserByEmailVerifyToken(ctx context.Context, token sql.NullString) (GetUserByEmailVerifyTokenRow, error)
+	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
+	GetUserByPasswordResetToken(ctx context.Context, token sql.NullString) (GetUserByPasswordResetTokenRow, error)
 	GetUserPreferences(ctx context.Context, userID string) (GetUserPreferencesRow, error)
+	GetUserRole(ctx context.Context, id string) (string, error)
+	// Role queries
+	HasAdminUser(ctx context.Context) (int64, error)
 	ListLeads(ctx context.Context, arg ListLeadsParams) ([]Lead, error)
 	ListOrganizationInvites(ctx context.Context, organizationID string) ([]ListOrganizationInvitesRow, error)
 	ListOrganizationMembers(ctx context.Context, organizationID string) ([]ListOrganizationMembersRow, error)
@@ -128,6 +132,7 @@ type Querier interface {
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 	UpdateUserPreferences(ctx context.Context, arg UpdateUserPreferencesParams) error
+	UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) error
 	// Persist org selection (upsert to handle both new and existing sessions)
 	UpsertMCPSession(ctx context.Context, arg UpsertMCPSessionParams) error
 }

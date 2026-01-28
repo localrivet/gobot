@@ -1,0 +1,266 @@
+package skills
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
+
+	"github.com/fsnotify/fsnotify"
+	"gopkg.in/yaml.v3"
+)
+
+// Loader manages loading and hot-reloading of skill definitions
+type Loader struct {
+	mu        sync.RWMutex
+	skills    map[string]*Skill // name -> skill
+	dir       string
+	watcher   *fsnotify.Watcher
+	onChange  func([]*Skill) // callback when skills change
+	cancelCtx context.CancelFunc
+}
+
+// NewLoader creates a new skill loader for the given directory
+func NewLoader(dir string) *Loader {
+	return &Loader{
+		skills: make(map[string]*Skill),
+		dir:    dir,
+	}
+}
+
+// LoadAll loads all skill files from the configured directory
+func (l *Loader) LoadAll() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	// Clear existing skills
+	l.skills = make(map[string]*Skill)
+
+	// Ensure directory exists
+	if _, err := os.Stat(l.dir); os.IsNotExist(err) {
+		// Directory doesn't exist, that's okay - no skills loaded
+		return nil
+	}
+
+	// Walk directory for .yaml and .yml files
+	err := filepath.Walk(l.dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext != ".yaml" && ext != ".yml" {
+			return nil
+		}
+
+		return l.loadFile(path)
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to load skills: %w", err)
+	}
+
+	log.Printf("[skills] Loaded %d skills from %s", len(l.skills), l.dir)
+	return nil
+}
+
+// loadFile loads a single skill file (must hold lock)
+func (l *Loader) loadFile(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to read %s: %w", path, err)
+	}
+
+	var skill Skill
+	if err := yaml.Unmarshal(data, &skill); err != nil {
+		return fmt.Errorf("failed to parse %s: %w", path, err)
+	}
+
+	// Set defaults
+	if skill.Version == "" {
+		skill.Version = "1.0.0"
+	}
+	skill.Enabled = true // Default to enabled
+	skill.FilePath = path
+
+	// Validate
+	if err := skill.Validate(); err != nil {
+		return fmt.Errorf("invalid skill %s: %w", path, err)
+	}
+
+	l.skills[skill.Name] = &skill
+	log.Printf("[skills] Loaded skill: %s (triggers: %v)", skill.Name, skill.Triggers)
+	return nil
+}
+
+// Watch starts watching the skills directory for changes
+func (l *Loader) Watch(ctx context.Context) error {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("failed to create watcher: %w", err)
+	}
+
+	l.watcher = watcher
+
+	// Create cancellable context
+	ctx, cancel := context.WithCancel(ctx)
+	l.cancelCtx = cancel
+
+	// Start watching goroutine
+	go l.watchLoop(ctx)
+
+	// Add directory to watch
+	if err := watcher.Add(l.dir); err != nil {
+		// Directory might not exist yet, that's okay
+		log.Printf("[skills] Warning: could not watch %s: %v", l.dir, err)
+	}
+
+	return nil
+}
+
+// watchLoop handles file system events
+func (l *Loader) watchLoop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event, ok := <-l.watcher.Events:
+			if !ok {
+				return
+			}
+			l.handleEvent(event)
+		case err, ok := <-l.watcher.Errors:
+			if !ok {
+				return
+			}
+			log.Printf("[skills] Watch error: %v", err)
+		}
+	}
+}
+
+// handleEvent processes a file system event
+func (l *Loader) handleEvent(event fsnotify.Event) {
+	ext := strings.ToLower(filepath.Ext(event.Name))
+	if ext != ".yaml" && ext != ".yml" {
+		return
+	}
+
+	log.Printf("[skills] File event: %s %s", event.Op, event.Name)
+
+	switch {
+	case event.Op&fsnotify.Write == fsnotify.Write,
+		event.Op&fsnotify.Create == fsnotify.Create:
+		// Reload the specific file
+		l.mu.Lock()
+		if err := l.loadFile(event.Name); err != nil {
+			log.Printf("[skills] Error reloading %s: %v", event.Name, err)
+		}
+		l.mu.Unlock()
+
+	case event.Op&fsnotify.Remove == fsnotify.Remove,
+		event.Op&fsnotify.Rename == fsnotify.Rename:
+		// Find and remove skill loaded from this file
+		l.mu.Lock()
+		for name, skill := range l.skills {
+			if skill.FilePath == event.Name {
+				delete(l.skills, name)
+				log.Printf("[skills] Unloaded skill: %s", name)
+				break
+			}
+		}
+		l.mu.Unlock()
+	}
+
+	// Notify callback
+	if l.onChange != nil {
+		l.onChange(l.List())
+	}
+}
+
+// OnChange sets a callback for when skills are loaded/unloaded
+func (l *Loader) OnChange(fn func([]*Skill)) {
+	l.onChange = fn
+}
+
+// Stop stops watching for changes
+func (l *Loader) Stop() {
+	if l.cancelCtx != nil {
+		l.cancelCtx()
+	}
+	if l.watcher != nil {
+		l.watcher.Close()
+	}
+}
+
+// Get returns a skill by name
+func (l *Loader) Get(name string) (*Skill, bool) {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	skill, ok := l.skills[name]
+	return skill, ok
+}
+
+// List returns all loaded skills sorted by priority (highest first)
+func (l *Loader) List() []*Skill {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	skills := make([]*Skill, 0, len(l.skills))
+	for _, skill := range l.skills {
+		skills = append(skills, skill)
+	}
+
+	sort.Slice(skills, func(i, j int) bool {
+		return skills[i].Priority > skills[j].Priority
+	})
+
+	return skills
+}
+
+// FindMatching returns all skills that match the given input
+func (l *Loader) FindMatching(input string) []*Skill {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
+	var matching []*Skill
+	for _, skill := range l.skills {
+		if skill.Matches(input) {
+			matching = append(matching, skill)
+		}
+	}
+
+	// Sort by priority
+	sort.Slice(matching, func(i, j int) bool {
+		return matching[i].Priority > matching[j].Priority
+	})
+
+	return matching
+}
+
+// ApplyMatchingSkills applies all matching skills to the system prompt
+func (l *Loader) ApplyMatchingSkills(systemPrompt, userInput string) string {
+	matching := l.FindMatching(userInput)
+	if len(matching) == 0 {
+		return systemPrompt
+	}
+
+	result := systemPrompt
+	for _, skill := range matching {
+		result = skill.ApplyToPrompt(result)
+	}
+	return result
+}
+
+// Count returns the number of loaded skills
+func (l *Loader) Count() int {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return len(l.skills)
+}

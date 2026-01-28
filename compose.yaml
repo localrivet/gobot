@@ -10,7 +10,7 @@ services:
       target: development
     container_name: gobot_app
     ports:
-      - "27895:8888"
+      - "27895:27895"
     env_file:
       - .env
     environment:
@@ -19,12 +19,6 @@ services:
       - SQLITE_PATH=/app/data/gobot.db
       - ACCESS_SECRET=${ACCESS_SECRET:-dev-secret-change-in-production}
       - APP_BASE_URL=http://localhost:27458
-      - LEVEE_ENABLED=${LEVEE_ENABLED:-false}
-      - LEVEE_API_KEY=${LEVEE_API_KEY}
-      - LEVEE_BASE_URL=${LEVEE_BASE_URL}
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
     volumes:
       - .:/app
       - /app/tmp

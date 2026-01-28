@@ -7,7 +7,6 @@ import (
 	"gobot/internal/svc"
 	"gobot/internal/types"
 
-	levee "github.com/almatuck/levee-go"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -26,14 +25,11 @@ func NewVerifyEmailLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Verif
 }
 
 func (l *VerifyEmailLogic) VerifyEmail(req *types.EmailVerificationRequest) (resp *types.MessageResponse, err error) {
-	if l.svcCtx.Levee == nil {
-		return nil, fmt.Errorf("levee service not configured")
+	if l.svcCtx.Auth == nil {
+		return nil, fmt.Errorf("auth service not configured")
 	}
 
-	// Verify email via Levee SDK
-	_, err = l.svcCtx.Levee.Auth.VerifyEmail(l.ctx, &levee.SDKVerifyEmailRequest{
-		Token: req.Token,
-	})
+	err = l.svcCtx.Auth.VerifyEmail(l.ctx, req.Token)
 	if err != nil {
 		l.Errorf("Email verification failed: %v", err)
 		return nil, err

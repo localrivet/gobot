@@ -8,7 +8,7 @@ endif
 # Gobot Makefile
 EXECUTABLE=gobot
 
-.PHONY: help dev build run clean test deps gen setup sqlc migrate-status migrate-up migrate-down
+.PHONY: help dev build build-cli run clean test deps gen setup sqlc migrate-status migrate-up migrate-down cli
 
 # Default target
 help:
@@ -22,6 +22,10 @@ help:
 	@echo "  make build     - Build production binary"
 	@echo "  make test      - Run tests"
 	@echo "  make gen       - Regenerate API code from .api file"
+	@echo ""
+	@echo "CLI Agent:"
+	@echo "  make build-cli - Build the CLI agent"
+	@echo "  make cli       - Build and install CLI globally"
 	@echo ""
 	@echo "Database:"
 	@echo "  make migrate-up     - Run pending migrations"
@@ -54,6 +58,17 @@ dev:
 build:
 	@echo "Building $(EXECUTABLE)..."
 	go build -o bin/$(EXECUTABLE) .
+
+# Build the CLI agent
+build-cli:
+	@echo "Building gobot CLI agent..."
+	go build -o bin/gobot-cli ./cmd/gobot-cli
+
+# Install CLI globally
+cli: build-cli
+	@echo "Installing gobot-cli..."
+	cp bin/gobot-cli $(GOPATH)/bin/gobot 2>/dev/null || cp bin/gobot-cli /usr/local/bin/gobot 2>/dev/null || echo "Copy bin/gobot-cli to your PATH manually"
+	@echo "Done! Run 'gobot --help' to get started"
 
 # Run the application
 run: build
