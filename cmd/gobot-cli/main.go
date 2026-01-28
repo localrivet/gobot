@@ -169,6 +169,14 @@ func loadConfig() *config.Config {
 
 // runChat runs the chat command
 func runChat(cfg *config.Config, args []string, interactive bool, dangerously bool) {
+	// Handle dangerous mode confirmation
+	if dangerously {
+		if !confirmDangerousMode() {
+			fmt.Println("Aborted.")
+			os.Exit(0)
+		}
+	}
+
 	// Create session manager
 	sessions, err := session.New(cfg.DBPath())
 	if err != nil {
@@ -188,7 +196,6 @@ func runChat(cfg *config.Config, args []string, interactive bool, dangerously bo
 	var policy *tools.Policy
 	if dangerously {
 		// 100% autonomous mode - no approval prompts
-		fmt.Println("\033[33m⚠ DANGEROUS MODE: All tool approvals bypassed!\033[0m")
 		policy = tools.NewPolicyFromConfig("full", "off", nil)
 	} else {
 		policy = tools.NewPolicyFromConfig(
@@ -548,8 +555,65 @@ Examples:
 	return cmd
 }
 
+// confirmDangerousMode displays warnings and requires explicit confirmation
+func confirmDangerousMode() bool {
+	fmt.Println()
+	fmt.Println("\033[1;31m╔══════════════════════════════════════════════════════════════════╗")
+	fmt.Println("║                    ⚠️  DANGEROUS MODE WARNING ⚠️                    ║")
+	fmt.Println("╠══════════════════════════════════════════════════════════════════╣")
+	fmt.Println("║                                                                  ║")
+	fmt.Println("║  You are about to run in FULLY AUTONOMOUS mode.                 ║")
+	fmt.Println("║                                                                  ║")
+	fmt.Println("║  This means:                                                    ║")
+	fmt.Println("║    • ALL tool approval prompts will be BYPASSED                 ║")
+	fmt.Println("║    • The AI can execute ANY shell command without asking        ║")
+	fmt.Println("║    • The AI can delete, modify, or create ANY files             ║")
+	fmt.Println("║    • The AI can make network requests without approval          ║")
+	fmt.Println("║    • The AI can run browser automation unattended               ║")
+	fmt.Println("║                                                                  ║")
+	fmt.Println("║  \033[1;33mPOTENTIAL RISKS:\033[1;31m                                               ║")
+	fmt.Println("║    • Accidental deletion of important files                     ║")
+	fmt.Println("║    • Unintended system modifications                            ║")
+	fmt.Println("║    • Execution of destructive commands (rm -rf, etc.)           ║")
+	fmt.Println("║    • Data loss or corruption                                    ║")
+	fmt.Println("║                                                                  ║")
+	fmt.Println("║  \033[1;37mOnly use this mode if you:\033[1;31m                                    ║")
+	fmt.Println("║    ✓ Fully trust the prompts you're sending                     ║")
+	fmt.Println("║    ✓ Have backups of important data                             ║")
+	fmt.Println("║    ✓ Understand the AI may make mistakes                        ║")
+	fmt.Println("║    ✓ Are in a safe/sandboxed environment                        ║")
+	fmt.Println("║                                                                  ║")
+	fmt.Println("╚══════════════════════════════════════════════════════════════════╝\033[0m")
+	fmt.Println()
+	fmt.Print("\033[1;33mType 'yes' to continue in dangerous mode: \033[0m")
+
+	reader := bufio.NewReader(os.Stdin)
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return false
+	}
+
+	response = strings.TrimSpace(strings.ToLower(response))
+	if response == "yes" {
+		fmt.Println()
+		fmt.Println("\033[1;31m🔓 DANGEROUS MODE ENABLED - All approvals bypassed!\033[0m")
+		fmt.Println()
+		return true
+	}
+
+	return false
+}
+
 // runAgent connects to SaaS and runs as an agent
 func runAgent(cfg *config.Config, orgID, agentID, serverURL, token string, dangerously bool) {
+	// Handle dangerous mode confirmation
+	if dangerously {
+		if !confirmDangerousMode() {
+			fmt.Println("Aborted.")
+			os.Exit(0)
+		}
+	}
+
 	if serverURL == "" {
 		serverURL = cfg.ServerURL
 	}
@@ -588,9 +652,6 @@ func runAgent(cfg *config.Config, orgID, agentID, serverURL, token string, dange
 	defer conn.Close()
 
 	fmt.Println("\033[32m✓ Connected to SaaS\033[0m")
-	if dangerously {
-		fmt.Println("\033[33m⚠ DANGEROUS MODE: All tool approvals bypassed!\033[0m")
-	}
 	fmt.Println("Waiting for tasks... (Ctrl+C to exit)")
 
 	// Create session manager
