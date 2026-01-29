@@ -12,23 +12,33 @@ An open-source AI agent platform with computer control capabilities. Features a 
 - **Persistent Sessions** - SQLite-backed conversation history with compaction
 - **MCP Server** - Expose tools to other AI assistants
 
+## Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/localrivet/gobot/main/install.sh | sh
+```
+
 ## Quick Start
 
 ```bash
-# Build gobot
-make build
-
-# Configure (creates ~/.gobot/)
-./bin/gobot config init
-
 # Set your API key
 export ANTHROPIC_API_KEY=sk-ant-...
 
-# Start chatting
-./bin/gobot chat "Hello, what can you do?"
+# Start GoBot (server + agent + UI)
+gobot
+
+# Open the web UI
+open http://localhost:29875
+```
+
+Or use the CLI directly:
+
+```bash
+# Chat mode
+gobot chat "Hello, what can you do?"
 
 # Interactive mode
-./bin/gobot chat --interactive
+gobot chat --interactive
 ```
 
 ## Architecture
