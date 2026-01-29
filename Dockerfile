@@ -67,8 +67,10 @@ RUN apk add --no-cache git build-base
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy Go source code and internal packages
+# Copy Go source code and all packages
 COPY *.go ./
+COPY agent/ ./agent/
+COPY cmd/ ./cmd/
 COPY internal/ ./internal/
 COPY app/ ./app/
 COPY etc/ ./etc/
@@ -95,7 +97,7 @@ COPY --from=builder /app/bin/gobot ./gobot
 COPY etc/ ./etc/
 
 # Copy database migrations (embedded in binary via goose, but kept for reference)
-COPY internal/migrations/ ./internal/migrations/
+COPY internal/db/migrations/ ./internal/db/migrations/
 
 # Create necessary directories
 RUN mkdir -p /app/certs /app/backups
