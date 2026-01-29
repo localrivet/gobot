@@ -79,5 +79,6 @@ jobs:
         with:
           files: binaries/*
           generate_release_notes: true
+          draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
