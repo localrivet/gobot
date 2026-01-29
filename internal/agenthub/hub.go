@@ -40,10 +40,11 @@ type ResponseHandler func(agentID string, frame *Frame)
 // ApprovalRequestHandler is called when an agent requests approval
 type ApprovalRequestHandler func(agentID string, requestID string, toolName string, input json.RawMessage)
 
-// Hub manages agent connections
+// Hub manages THE agent connection (single-bot paradigm)
 type Hub struct {
-	// Registered agents by ID
-	agents sync.Map // map[agentID]*AgentConnection
+	// Single Bot Paradigm: ONE agent connection
+	agentMu sync.RWMutex
+	agent   *AgentConnection
 
 	// Register channel
 	register chan *AgentConnection
@@ -65,8 +66,8 @@ type Hub struct {
 // NewHub creates a new agent hub
 func NewHub() *Hub {
 	return &Hub{
-		register:   make(chan *AgentConnection),
-		unregister: make(chan *AgentConnection),
+		register:   make(chan *AgentConnection, 1),
+		unregister: make(chan *AgentConnection, 1),
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -91,55 +92,85 @@ func (h *Hub) Run(ctx context.Context) {
 	}
 }
 
-// addAgent adds an agent to the hub
-func (h *Hub) addAgent(agent *AgentConnection) {
-	h.agents.Store(agent.ID, agent)
-	lifecycle.Emit(lifecycle.EventAgentConnected, agent.ID)
-}
+// addAgent sets THE agent (single-bot paradigm: disconnects any existing agent first)
+func (h *Hub) addAgent(newAgent *AgentConnection) {
+	h.agentMu.Lock()
+	defer h.agentMu.Unlock()
 
-// removeAgent removes an agent from the hub
-func (h *Hub) removeAgent(agent *AgentConnection) {
-	h.agents.Delete(agent.ID)
-	close(agent.Send)
-	if agent.Conn != nil {
-		agent.Conn.Close()
+	// Single Bot Paradigm: If there's an existing agent, disconnect it first
+	if h.agent != nil {
+		fmt.Printf("[AgentHub] Single Bot: Disconnecting existing agent %s to accept new agent %s\n", h.agent.ID, newAgent.ID)
+		close(h.agent.Send)
+		if h.agent.Conn != nil {
+			h.agent.Conn.Close()
+		}
+		lifecycle.Emit(lifecycle.EventAgentDisconnected, h.agent.ID)
 	}
-	lifecycle.Emit(lifecycle.EventAgentDisconnected, agent.ID)
+
+	h.agent = newAgent
+	fmt.Printf("[AgentHub] Single Bot: THE agent connected: %s\n", newAgent.ID)
+	lifecycle.Emit(lifecycle.EventAgentConnected, newAgent.ID)
 }
 
-// GetAgent returns an agent by ID
+// removeAgent removes THE agent if it matches
+func (h *Hub) removeAgent(agent *AgentConnection) {
+	h.agentMu.Lock()
+	defer h.agentMu.Unlock()
+
+	if h.agent != nil && h.agent.ID == agent.ID {
+		close(agent.Send)
+		if agent.Conn != nil {
+			agent.Conn.Close()
+		}
+		h.agent = nil
+		lifecycle.Emit(lifecycle.EventAgentDisconnected, agent.ID)
+	}
+}
+
+// GetTheAgent returns THE agent (single-bot paradigm)
+func (h *Hub) GetTheAgent() *AgentConnection {
+	h.agentMu.RLock()
+	defer h.agentMu.RUnlock()
+	return h.agent
+}
+
+// GetAgent returns an agent by ID (for backwards compatibility)
 func (h *Hub) GetAgent(agentID string) *AgentConnection {
-	if agentI, ok := h.agents.Load(agentID); ok {
-		return agentI.(*AgentConnection)
+	h.agentMu.RLock()
+	defer h.agentMu.RUnlock()
+	if h.agent != nil && h.agent.ID == agentID {
+		return h.agent
 	}
 	return nil
 }
 
-// GetAnyAgent returns the first available connected agent
+// GetAnyAgent returns THE agent (for backwards compatibility)
 func (h *Hub) GetAnyAgent() *AgentConnection {
-	var found *AgentConnection
-	h.agents.Range(func(_, agentI any) bool {
-		found = agentI.(*AgentConnection)
-		return false // Stop after first
-	})
-	return found
+	return h.GetTheAgent()
 }
 
-// GetAllAgents returns all connected agents
+// GetAllAgents returns THE agent as a slice (for backwards compatibility)
 func (h *Hub) GetAllAgents() []*AgentConnection {
-	var agents []*AgentConnection
-	h.agents.Range(func(_, agentI any) bool {
-		agents = append(agents, agentI.(*AgentConnection))
-		return true
-	})
-	return agents
+	h.agentMu.RLock()
+	defer h.agentMu.RUnlock()
+	if h.agent != nil {
+		return []*AgentConnection{h.agent}
+	}
+	return nil
 }
 
-// SendToAgent sends a frame to a specific agent
+// IsConnected returns true if THE agent is connected
+func (h *Hub) IsConnected() bool {
+	h.agentMu.RLock()
+	defer h.agentMu.RUnlock()
+	return h.agent != nil
+}
+
+// SendToAgent sends a frame to THE agent (agentID is ignored in single-bot mode)
 func (h *Hub) SendToAgent(agentID string, frame *Frame) error {
-	agent := h.GetAgent(agentID)
+	agent := h.GetTheAgent()
 	if agent == nil {
-		return fmt.Errorf("agent not found: %s", agentID)
+		return fmt.Errorf("agent not connected")
 	}
 
 	data, err := json.Marshal(frame)
@@ -153,6 +184,11 @@ func (h *Hub) SendToAgent(agentID string, frame *Frame) error {
 	default:
 		return fmt.Errorf("agent send buffer full")
 	}
+}
+
+// Send sends a frame to THE agent (simpler API for single-bot)
+func (h *Hub) Send(frame *Frame) error {
+	return h.SendToAgent("", frame)
 }
 
 // SetResponseHandler sets the handler for agent responses
@@ -170,31 +206,19 @@ func (h *Hub) SetApprovalHandler(handler ApprovalRequestHandler) {
 	h.approvalHandler = handler
 }
 
-// SendApprovalResponse sends an approval response back to an agent
+// SendApprovalResponse sends an approval response back to THE agent
 func (h *Hub) SendApprovalResponse(agentID, requestID string, approved bool) error {
 	frame := &Frame{
 		Type:    "approval_response",
 		ID:      requestID,
 		Payload: map[string]any{"approved": approved},
 	}
-	return h.SendToAgent(agentID, frame)
+	return h.Send(frame)
 }
 
-// Broadcast sends a frame to all connected agents
+// Broadcast sends a frame to THE agent (same as Send in single-bot mode)
 func (h *Hub) Broadcast(frame *Frame) {
-	data, err := json.Marshal(frame)
-	if err != nil {
-		return
-	}
-
-	agents := h.GetAllAgents()
-	for _, agent := range agents {
-		select {
-		case agent.Send <- data:
-		default:
-			// Skip if buffer full
-		}
-	}
+	_ = h.Send(frame)
 }
 
 // HandleWebSocket handles a WebSocket connection from an agent
@@ -293,9 +317,6 @@ func (h *Hub) writePump(agent *AgentConnection) {
 
 // handleFrame processes an incoming frame from an agent
 func (h *Hub) handleFrame(agent *AgentConnection, frame *Frame) {
-	// Log ALL frames for debugging
-	fmt.Printf("[AgentHub] Frame from %s: type=%s method=%s id=%s\n", agent.ID, frame.Type, frame.Method, frame.ID)
-
 	switch frame.Type {
 	case "res":
 		// Response to a request we sent - route to handler
@@ -304,10 +325,7 @@ func (h *Hub) handleFrame(agent *AgentConnection, frame *Frame) {
 		h.responseHandlerMu.RUnlock()
 
 		if handler != nil {
-			fmt.Printf("[AgentHub] Routing response frame %s to handler\n", frame.ID)
 			handler(agent.ID, frame)
-		} else {
-			fmt.Printf("[AgentHub] WARNING: No response handler for response frame %s\n", frame.ID)
 		}
 	case "stream":
 		// Streaming chunk from agent - route to same handler as responses
@@ -316,10 +334,7 @@ func (h *Hub) handleFrame(agent *AgentConnection, frame *Frame) {
 		h.responseHandlerMu.RUnlock()
 
 		if handler != nil {
-			fmt.Printf("[AgentHub] Routing stream frame %s to handler\n", frame.ID)
 			handler(agent.ID, frame)
-		} else {
-			fmt.Printf("[AgentHub] WARNING: No response handler for stream frame %s\n", frame.ID)
 		}
 	case "approval_request":
 		// Approval request from agent - forward to UI

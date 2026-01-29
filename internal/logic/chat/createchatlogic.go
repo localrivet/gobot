@@ -2,6 +2,7 @@ package chat
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"gobot/internal/db"
@@ -18,7 +19,7 @@ type CreateChatLogic struct {
 	svcCtx *svc.ServiceContext
 }
 
-// Create new chat
+// Create new chat - Single Bot Paradigm: returns the companion chat instead of creating new ones
 func NewCreateChatLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CreateChatLogic {
 	return &CreateChatLogic{
 		Logger: logx.WithContext(ctx),
@@ -28,18 +29,16 @@ func NewCreateChatLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Create
 }
 
 func (l *CreateChatLogic) CreateChat(req *types.CreateChatRequest) (resp *types.CreateChatResponse, err error) {
-	chatID := uuid.New().String()
-	title := req.Title
-	if title == "" {
-		title = "New Chat"
-	}
+	// Single Bot Paradigm: Always return the companion chat
+	// We don't create new chats - there is only ONE conversation with THE agent
+	userID := companionUserID
 
-	chat, err := l.svcCtx.DB.CreateChat(l.ctx, db.CreateChatParams{
-		ID:    chatID,
-		Title: title,
+	chat, err := l.svcCtx.DB.GetOrCreateCompanionChat(l.ctx, db.GetOrCreateCompanionChatParams{
+		ID:     uuid.New().String(),
+		UserID: sql.NullString{String: userID, Valid: true},
 	})
 	if err != nil {
-		l.Errorf("Failed to create chat: %v", err)
+		l.Errorf("Failed to get companion chat: %v", err)
 		return nil, err
 	}
 

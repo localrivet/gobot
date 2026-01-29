@@ -213,8 +213,8 @@ func RunAll() {
 	// Print clean startup banner
 	printStartupBanner(serverURL, mcpURL, dataDir)
 
-	// Auto-open browser
-	openBrowser(serverURL)
+	// Auto-open browser (only if not recently opened)
+	openBrowser(serverURL, dataDir)
 
 	// Wait for shutdown or error
 	select {
@@ -247,7 +247,18 @@ func printStartupBanner(serverURL, mcpURL, dataDir string) {
 }
 
 // openBrowser opens the default browser to the specified URL
-func openBrowser(url string) {
+// Skips opening if browser was recently opened (within last 8 hours)
+func openBrowser(url string, dataDir string) {
+	// Check if browser was recently opened
+	browserFile := dataDir + "/browser_opened"
+	if info, err := os.Stat(browserFile); err == nil {
+		// File exists - check if it's recent (within 8 hours)
+		if time.Since(info.ModTime()) < 8*time.Hour {
+			// Browser was opened recently, skip
+			return
+		}
+	}
+
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
@@ -259,7 +270,11 @@ func openBrowser(url string) {
 	default:
 		return
 	}
-	cmd.Start()
+
+	if err := cmd.Start(); err == nil {
+		// Mark browser as opened
+		os.WriteFile(browserFile, []byte(time.Now().Format(time.RFC3339)), 0600)
+	}
 }
 
 // waitForServer polls the server until it's ready or timeout
