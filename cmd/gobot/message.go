@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// messageCmd creates the message command (moltbot-style send)
+// messageCmd creates the message command
 func MessageCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "message",
